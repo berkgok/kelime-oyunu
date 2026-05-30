@@ -52,6 +52,9 @@ def fetch(url, path):
 def tr_upper(s):
     return s.replace("i", "İ").replace("ı", "I").upper()
 
+def tr_lower(s):
+    return s.replace("I", "ı").replace("İ", "i").lower()
+
 def deaccent(s):
     return s.replace("â", "a").replace("î", "i").replace("û", "u")
 
@@ -77,31 +80,46 @@ def is_ref(a):
         return True
     return a.lower().startswith(("bk.", "bakınız", "krş.", "bk ", "→"))
 
-def clean_def(anlam, word):
-    t = re.sub(r"\s+", " ", anlam).strip()
-    # asıl tanımı al: ilk ";" öncesi (sonrası genelde eş anlamlı listesi)
-    t = t.split(";")[0].strip()
-    # cevabı maskele — kelime ve onunla başlayan çekimli/bileşik biçimler
-    # (ör. "cuma" -> "cumartesi", "yazı" -> "yazılması", "maya" -> "mayalanma")
-    t = re.sub(r"\b" + re.escape(word) + r"\w*", "…", t, flags=re.IGNORECASE)
-    # çok uzunsa kısalt (son boşluktan kes)
-    if len(t) > 150:
-        t = t[:150].rsplit(" ", 1)[0] + "…"
-    return t.strip(" ,;:")
-
 _VULGAR_TEXT = re.compile(r"\b(" + "|".join(re.escape(b) for b in BLOCKLIST if len(b) > 2) + r")\b", re.IGNORECASE)
+SYMBOL = re.compile(r"[+=%×÷−]")                     # işaret tanımı (ör. ARTI -> "+")
+TOKEN  = re.compile(r"[a-zçğıöşü]+")                 # tanımdaki kelimeler (deaccent sonrası)
+
+def clean_def(anlam):
+    """asıl tanım: fazla boşlukları sadeleştir, ilk ';' öncesini al (sonrası eş anlamlı listesi)."""
+    t = re.sub(r"\s+", " ", anlam).strip()
+    return t.split(";")[0].strip(" ,;:")
+
+def reveals(word, c):
+    """tanım, cevabı ya da aynı kökten türemiş bir kelimeyi içeriyor mu?
+       (ör. ÇARESİZCE <- 'çaresiz', KAZI <- 'kazma', ARKADAŞLIK <- 'arkadaş')"""
+    w = deaccent(tr_lower(word))
+    L = len(w)
+    thr = 3 if L <= 4 else (4 if L <= 6 else 5)      # ortak ön ek eşiği (uzunluğa göre)
+    for t in TOKEN.findall(deaccent(tr_lower(c))):
+        if len(t) < 3:
+            continue
+        n = 0
+        for a, b in zip(w, t):
+            if a == b:
+                n += 1
+            else:
+                break
+        if n >= thr:
+            return True
+    return False
 
 def good_meaning(anlam, word):
     """bir anlamı temizleyip oyuna uygunsa döndürür, değilse None"""
     if not anlam or is_ref(anlam):
         return None
-    c = clean_def(anlam, word)
-    if len(c) < MIN_DEF_LEN or c.count("…") > 1 or c[0].isdigit():
+    c = clean_def(anlam)
+    if len(c) < MIN_DEF_LEN or c[0].isdigit():
         return None
-    stem = deaccent(word)[:max(4, len(word) - 1)]
-    if deaccent(c).lower().startswith(stem):        # dairesel (ör. "Abartmak durumu")
+    if SYMBOL.search(c):                             # işaret tanımı (ör. ARTI -> "+ işareti")
         return None
-    if _VULGAR_TEXT.search(c):                       # tanım metni kaba kelime içeriyor (ör. "...pezevenk")
+    if _VULGAR_TEXT.search(c):                       # tanım metni kaba kelime içeriyor
+        return None
+    if reveals(word, c):                            # cevap veya aynı kökten kelime tanımda geçiyor
         return None
     return c
 

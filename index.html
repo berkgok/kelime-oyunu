@@ -14,6 +14,7 @@
     --tile:#10183a;
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none !important}   /* flex kapsayıcılarda da gizle */
   html,body{height:100%}
   body{
     font-family:"Trebuchet MS","Segoe UI",sans-serif;
@@ -85,11 +86,12 @@
     padding:6px 16px; border-radius:999px; font-size:14px}
   .meta .chip b{color:var(--accent); font-size:18px}
 
-  .tiles{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:6px 0 20px}
-  .tile{width:clamp(36px,7vw,56px); height:clamp(46px,9vw,68px); border-radius:10px;
+  /* kareler her zaman tek satır: esnek genişlik, en uzun kelimede küçülerek sığar */
+  .tiles{display:flex; gap:8px; justify-content:center; flex-wrap:nowrap; margin:6px 0 20px}
+  .tile{flex:1 1 0; min-width:0; max-width:56px; aspect-ratio:5/6; border-radius:10px;
     background:linear-gradient(180deg,#1b2a5e,var(--tile)); border:1px solid rgba(255,255,255,.18);
     display:flex; align-items:center; justify-content:center;
-    font-size:clamp(20px,4.5vw,34px); font-weight:900; color:var(--accent);
+    font-size:clamp(17px,5.2vw,32px); font-weight:900; color:var(--accent);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.12), 0 6px 14px rgba(0,0,0,.35); text-transform:uppercase}
   .tile.spin{color:#fff; background:linear-gradient(180deg,#3a2a7e,#241a52);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 0 22px rgba(168,130,255,.6); animation:wobble .12s linear infinite}
@@ -103,17 +105,15 @@
   .btn-buzz{background:linear-gradient(180deg,#ef4444,#b91c1c); color:#fff; box-shadow:0 8px 22px rgba(239,68,68,.4)}
   .btn:disabled{opacity:.4; cursor:not-allowed; filter:grayscale(.4)}
 
-  .overlay{position:fixed; inset:0; background:rgba(5,2,20,.75); backdrop-filter:blur(4px);
-    display:none; align-items:center; justify-content:center; z-index:50; padding:18px}
-  .overlay.active{display:flex; animation:fade .2s}
-  .answer-box{width:100%; max-width:520px; text-align:center}
-  .ring{position:relative; width:120px; height:120px; margin:0 auto 14px}
+  /* satır içi cevap çubuğu — açıklama ve kareleri kapatmaz */
+  .answerbar{display:flex; gap:12px; align-items:center; animation:fade .2s}
+  .ring{position:relative; width:56px; height:56px; flex:0 0 auto}
   .ring svg{transform:rotate(-90deg)}
-  .ring .num{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:42px; font-weight:900; color:#fff}
-  #answerInput{width:100%; padding:18px; font-size:26px; text-align:center; text-transform:uppercase;
-    letter-spacing:6px; border-radius:14px; border:2px solid var(--accent); background:#0c0826; color:#fff;
-    font-family:inherit; font-weight:800; margin:8px 0 14px; outline:none}
-  .answer-box .hint{color:#c9bdf2; margin-bottom:10px; font-size:14px}
+  .ring .num{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; color:#fff}
+  #answerInput{flex:1 1 auto; min-width:0; width:100%; padding:16px; font-size:24px; text-align:center; text-transform:uppercase;
+    letter-spacing:5px; border-radius:14px; border:2px solid var(--accent); background:#0c0826; color:#fff;
+    font-family:inherit; font-weight:800; outline:none}
+  #answerForm{margin:0}
 
   #flash{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60; pointer-events:none}
   #flash .msg{font-size:clamp(40px,12vw,110px); font-weight:900; letter-spacing:2px;
@@ -183,10 +183,22 @@
         <div class="chip">Açılan <b id="openVal">0</b></div>
       </div>
       <div class="tiles" id="tiles"></div>
-      <div class="controls">
+      <div class="controls" id="controls">
         <button class="btn btn-letter" id="btnLetter" onclick="Game.takeLetter()">Harf Al (−100)</button>
         <button class="btn btn-buzz" onclick="Game.buzz()">Cevapla</button>
       </div>
+      <form class="answerbar" id="answerForm" autocomplete="off" hidden>
+        <div class="ring">
+          <svg width="56" height="56">
+            <circle cx="28" cy="28" r="24" stroke="rgba(255,255,255,.15)" stroke-width="6" fill="none"/>
+            <circle id="ringFg" cx="28" cy="28" r="24" stroke="#ffd23f" stroke-width="6" fill="none"
+                    stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="0"/>
+          </svg>
+          <div class="num" id="ringNum">20</div>
+        </div>
+        <input id="answerInput" autocomplete="off" autocapitalize="characters" autocorrect="off"
+               spellcheck="false" enterkeyhint="go" inputmode="text" placeholder="cevabı yaz…" />
+      </form>
       <div class="word-reveal" id="wordReveal"></div>
     </div>
   </section>
@@ -205,25 +217,6 @@
     </div>
   </section>
 
-</div>
-
-<!-- Answer overlay -->
-<div class="overlay" id="overlay">
-  <div class="answer-box">
-    <div class="ring">
-      <svg width="120" height="120">
-        <circle cx="60" cy="60" r="52" stroke="rgba(255,255,255,.15)" stroke-width="10" fill="none"/>
-        <circle id="ringFg" cx="60" cy="60" r="52" stroke="#ffd23f" stroke-width="10" fill="none"
-                stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/>
-      </svg>
-      <div class="num" id="ringNum">20</div>
-    </div>
-    <div class="hint">Kelimeyi yaz ve gönder — <b id="ovalVal">0</b> puan!</div>
-    <form id="answerForm" autocomplete="off">
-      <input id="answerInput" autocomplete="off" autocapitalize="characters" autocorrect="off"
-             spellcheck="false" enterkeyhint="go" inputmode="text" />
-    </form>
-  </div>
 </div>
 
 <div id="flash"><div class="msg" id="flashMsg"></div></div>
@@ -596,9 +589,10 @@ const Game = (()=>{
     answering=true;
     pauseClock();
     updateLetterBtn();
-    $('ovalVal').textContent = value();
     const inp=$('answerInput'); inp.value='';
-    $('overlay').classList.add('active');
+    $('controls').hidden = true;          // butonları gizle, cevap çubuğunu göster
+    $('answerForm').hidden = false;       // açıklama ve kareler görünür kalır
+    $('ringFg').setAttribute('stroke', '#ffd23f');
     setTimeout(()=>inp.focus(),50);
     ansEnd = Date.now()+ANSWER*1000;
     ansTimer = setInterval(tickAns, 100);
@@ -609,7 +603,7 @@ const Game = (()=>{
     const n=Math.ceil(left);
     $('ringNum').textContent = n;
     const frac = left/ANSWER;
-    $('ringFg').style.strokeDashoffset = (326.7*(1-frac)).toFixed(1);
+    $('ringFg').style.strokeDashoffset = (150.8*(1-frac)).toFixed(1);
     $('ringFg').setAttribute('stroke', left<=5? '#ef4444':'#ffd23f');
     if(left<=5 && Math.abs(left-n)<0.06) sTick();
     if(left<=0){ clearInterval(ansTimer); ansTimer=null; resolve(false,true); }
@@ -631,7 +625,8 @@ const Game = (()=>{
   }
   function resolve(correct, timeout){
     answering=false; resolving=true;
-    $('overlay').classList.remove('active');
+    $('answerForm').hidden = true;        // cevap çubuğunu gizle, butonları geri getir
+    $('controls').hidden = false;
     const val = value();
     if(correct){
       score += val; solved++;
@@ -660,6 +655,7 @@ const Game = (()=>{
     score=0; solved=0; missed=0; count=0; remaining=TOTAL; gameOver=false; answering=false; spinning=false; resolving=false;
     queue=buildQueue(); qi=0;
     $('scoreVal').textContent=0;
+    $('answerForm').hidden=true; $('controls').hidden=false;
     show('gameScreen');
     nextWord();
     startClock();
@@ -670,7 +666,7 @@ const Game = (()=>{
     gameOver=true; answering=false;
     if(clockTimer){clearInterval(clockTimer);clockTimer=null;}
     if(ansTimer){clearInterval(ansTimer);ansTimer=null;}
-    $('overlay').classList.remove('active');
+    $('answerForm').hidden=true; $('controls').hidden=false;
     let best = +(localStorage.getItem('ko_best')||0);
     if(score>best){ best=score; localStorage.setItem('ko_best', best); }
     $('finalScore').textContent=score;
