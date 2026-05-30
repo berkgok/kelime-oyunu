@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kelime Oyunu</title>
+<style>
+  :root{
+    --bg1:#1a0b3d; --bg2:#2d1066; --bg3:#0a0420;
+    --accent:#ffd23f; --accent2:#ff7b00;
+    --blue:#3b82f6; --blue2:#06b6d4;
+    --green:#22c55e; --red:#ef4444;
+    --panel:rgba(255,255,255,.06);
+    --tile:#10183a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Trebuchet MS","Segoe UI",sans-serif;
+    color:#fff;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #5b21b6 0%, transparent 60%),
+      radial-gradient(900px 500px at 100% 100%, #0e7490 0%, transparent 55%),
+      linear-gradient(160deg,var(--bg1),var(--bg2) 45%,var(--bg3));
+    background-attachment:fixed;
+    min-height:100vh; overflow-x:hidden;
+    display:flex; align-items:center; justify-content:center;
+    padding:18px;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.35;
+    background:
+      conic-gradient(from 200deg at 20% -10%, transparent 0deg, rgba(255,210,63,.25) 10deg, transparent 25deg),
+      conic-gradient(from 160deg at 80% -10%, transparent 0deg, rgba(59,130,246,.25) 10deg, transparent 25deg);
+    mix-blend-mode:screen;
+  }
+  .stage{width:100%; max-width:920px; position:relative; z-index:1}
+
+  .screen{display:none; animation:fade .4s ease}
+  .screen.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  .logo{text-align:center; margin-bottom:6px}
+  .logo h1{
+    font-size:clamp(38px,9vw,76px); letter-spacing:4px; line-height:.95;
+    background:linear-gradient(180deg,#fff,var(--accent) 60%,var(--accent2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 40px rgba(255,210,63,.35); font-weight:900;
+  }
+  .logo .sub{letter-spacing:6px; font-size:13px; color:#cdb6ff; text-transform:uppercase; margin-top:4px}
+
+  .card{
+    background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:22px; padding:26px;
+    box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.18);
+    backdrop-filter:blur(6px);
+  }
+  .start-card{text-align:center}
+  .tagline{margin:6px 0 22px; line-height:1.6; font-size:16px; color:#e0d8ff}
+  .tagline b{color:var(--accent)}
+
+  .btn{cursor:pointer; border:none; border-radius:14px; font-weight:800;
+    font-family:inherit; letter-spacing:1px; transition:.15s transform,.15s filter,.15s box-shadow; text-transform:uppercase}
+  .btn:active{transform:translateY(2px) scale(.99)}
+  .btn-main{width:100%; padding:18px; font-size:20px; margin-top:8px;
+    background:linear-gradient(180deg,var(--accent),var(--accent2)); color:#3a1500; box-shadow:0 10px 30px rgba(255,123,0,.45)}
+  .btn-main:hover{filter:brightness(1.08)}
+
+  .hud{display:flex; justify-content:space-between; align-items:stretch; gap:14px; margin-bottom:18px}
+  .hud .box{flex:1; background:var(--panel); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:12px 16px; text-align:center}
+  .hud .label{font-size:11px; letter-spacing:2px; color:#b9a8ee; text-transform:uppercase}
+  .hud .val{font-size:30px; font-weight:900; line-height:1.1; font-variant-numeric:tabular-nums}
+  #score .val{color:var(--accent)}
+  #clock .val.low{color:var(--red); animation:pulse .6s infinite}
+  @keyframes pulse{50%{opacity:.45}}
+
+  .panel{background:linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15));
+    border:1px solid rgba(255,255,255,.12); border-radius:20px; padding:22px}
+  .clue{font-size:clamp(16px,2.4vw,22px); text-align:center; line-height:1.5; color:#fff;
+    min-height:64px; display:flex; align-items:center; justify-content:center; padding:6px 10px}
+  .clue .len{color:var(--blue2); font-weight:800}
+  .meta{display:flex; justify-content:center; gap:14px; margin:14px 0 18px; flex-wrap:wrap}
+  .meta .chip{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
+    padding:6px 16px; border-radius:999px; font-size:14px}
+  .meta .chip b{color:var(--accent); font-size:18px}
+
+  .tiles{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:6px 0 20px}
+  .tile{width:clamp(36px,7vw,56px); height:clamp(46px,9vw,68px); border-radius:10px;
+    background:linear-gradient(180deg,#1b2a5e,var(--tile)); border:1px solid rgba(255,255,255,.18);
+    display:flex; align-items:center; justify-content:center;
+    font-size:clamp(20px,4.5vw,34px); font-weight:900; color:var(--accent);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.12), 0 6px 14px rgba(0,0,0,.35); text-transform:uppercase}
+  .tile.spin{color:#fff; background:linear-gradient(180deg,#3a2a7e,#241a52);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 0 22px rgba(168,130,255,.6); animation:wobble .12s linear infinite}
+  @keyframes wobble{0%{transform:translateY(-2px)}50%{transform:translateY(2px)}100%{transform:translateY(-2px)}}
+  .tile.land{animation:land .45s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes land{0%{transform:scale(1.35);color:#fff}60%{transform:scale(.92)}100%{transform:none;color:var(--accent)}}
+
+  .controls{display:flex; gap:12px; flex-wrap:wrap}
+  .controls .btn{flex:1; min-width:150px; padding:16px; font-size:16px}
+  .btn-letter{background:linear-gradient(180deg,#22d3ee,#0891b2); color:#04222b}
+  .btn-buzz{background:linear-gradient(180deg,#ef4444,#b91c1c); color:#fff; box-shadow:0 8px 22px rgba(239,68,68,.4)}
+  .btn:disabled{opacity:.4; cursor:not-allowed; filter:grayscale(.4)}
+
+  .overlay{position:fixed; inset:0; background:rgba(5,2,20,.75); backdrop-filter:blur(4px);
+    display:none; align-items:center; justify-content:center; z-index:50; padding:18px}
+  .overlay.active{display:flex; animation:fade .2s}
+  .answer-box{width:100%; max-width:520px; text-align:center}
+  .ring{position:relative; width:120px; height:120px; margin:0 auto 14px}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .num{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:42px; font-weight:900; color:#fff}
+  #answerInput{width:100%; padding:18px; font-size:26px; text-align:center; text-transform:uppercase;
+    letter-spacing:6px; border-radius:14px; border:2px solid var(--accent); background:#0c0826; color:#fff;
+    font-family:inherit; font-weight:800; margin:8px 0 14px; outline:none}
+  .answer-box .hint{color:#c9bdf2; margin-bottom:10px; font-size:14px}
+
+  #flash{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60; pointer-events:none}
+  #flash .msg{font-size:clamp(40px,12vw,110px); font-weight:900; letter-spacing:2px;
+    text-shadow:0 0 50px currentColor; animation:flashIn .9s ease forwards}
+  @keyframes flashIn{0%{transform:scale(.3);opacity:0}20%{transform:scale(1.1);opacity:1}80%{opacity:1}100%{transform:scale(1);opacity:0}}
+
+  .final{text-align:center}
+  .final .big{font-size:clamp(60px,16vw,120px); font-weight:900; color:var(--accent); text-shadow:0 0 50px rgba(255,210,63,.4); font-variant-numeric:tabular-nums}
+  .final .stat{display:flex; gap:14px; justify-content:center; margin:18px 0; flex-wrap:wrap}
+  .final .stat .box{background:var(--panel); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:14px 22px}
+  .final .stat .box .n{font-size:28px; font-weight:900}
+  .final .stat .box .l{font-size:12px; color:#b9a8ee; letter-spacing:1px}
+
+  .topbtns{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px}
+  .iconbtn{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; font-size:14px}
+  .word-reveal{margin-top:8px; font-size:14px; color:#ffe; min-height:20px; text-align:center}
+  .footer{text-align:center; margin-top:14px; color:#8f7fc0; font-size:12px}
+
+  /* ---------- Mobil ince ayar ---------- */
+  @media (max-width:480px){
+    body{padding:12px}
+    .card{padding:20px}
+    .panel{padding:16px}
+    .hud{gap:8px; margin-bottom:14px}
+    .hud .box{padding:10px 6px}
+    .hud .label{font-size:10px; letter-spacing:1px}
+    .hud .val{font-size:22px}
+    .meta{gap:8px}
+    .meta .chip{padding:5px 12px; font-size:13px}
+    .tiles{gap:6px}
+    .controls{gap:10px}
+    .controls .btn{flex:1 1 100%; min-width:0}   /* butonlar tam genişlik, alt alta */
+    #answerInput{letter-spacing:4px; font-size:22px}
+  }
+  /* Dokunmatik vurgu/seçim kaymalarını engelle */
+  .btn,.iconbtn,.tile{-webkit-tap-highlight-color:transparent; user-select:none}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- START -->
+  <section id="startScreen" class="screen active">
+    <div class="logo"><h1>KELİME<br>OYUNU</h1><div class="sub">14 Soru · 4 Dakika</div></div>
+    <div class="card start-card">
+      <p class="tagline">Tanımdan kelimeyi bul. Harf aldıkça puan düşer; <b>hiç harf almadan</b> bilirsen tam puan.</p>
+      <button class="btn btn-main" onclick="Game.start()">BAŞLA</button>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="gameScreen" class="screen">
+    <div class="topbtns">
+      <button class="iconbtn" onclick="Game.toggleMute()" id="muteBtn">🔊 Ses</button>
+      <button class="iconbtn" onclick="Game.quit()">⨯ Bitir</button>
+    </div>
+    <div class="hud">
+      <div class="box" id="score"><div class="label">Skor</div><div class="val" id="scoreVal">0</div></div>
+      <div class="box" id="clock"><div class="label">Süre</div><div class="val" id="clockVal">4:00</div></div>
+      <div class="box" id="cnt"><div class="label">Kelime</div><div class="val" id="cntVal">1 / 14</div></div>
+    </div>
+    <div class="panel">
+      <div class="clue" id="clue">…</div>
+      <div class="meta">
+        <div class="chip">Uzunluk <b id="lenVal">–</b></div>
+        <div class="chip">Değer <b id="valVal">–</b></div>
+        <div class="chip">Açılan <b id="openVal">0</b></div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div class="controls">
+        <button class="btn btn-letter" id="btnLetter" onclick="Game.takeLetter()">Harf Al (−100)</button>
+        <button class="btn btn-buzz" onclick="Game.buzz()">Cevapla</button>
+      </div>
+      <div class="word-reveal" id="wordReveal"></div>
+    </div>
+  </section>
+
+  <!-- END -->
+  <section id="endScreen" class="screen">
+    <div class="logo"><h1>SÜRE BİTTİ</h1></div>
+    <div class="card final">
+      <div class="big" id="finalScore">0</div>
+      <div class="stat">
+        <div class="box"><div class="n" id="finalSolved">0</div><div class="l">DOĞRU KELİME</div></div>
+        <div class="box"><div class="n" id="finalMiss">0</div><div class="l">KAÇAN KELİME</div></div>
+        <div class="box"><div class="n" id="finalBest">0</div><div class="l">REKOR</div></div>
+      </div>
+      <button class="btn btn-main" onclick="Game.start()">TEKRAR OYNA</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- Answer overlay -->
+<div class="overlay" id="overlay">
+  <div class="answer-box">
+    <div class="ring">
+      <svg width="120" height="120">
+        <circle cx="60" cy="60" r="52" stroke="rgba(255,255,255,.15)" stroke-width="10" fill="none"/>
+        <circle id="ringFg" cx="60" cy="60" r="52" stroke="#ffd23f" stroke-width="10" fill="none"
+                stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/>
+      </svg>
+      <div class="num" id="ringNum">20</div>
+    </div>
+    <div class="hint">Kelimeyi yaz ve Enter'a bas — <b id="ovalVal">0</b> puan!</div>
+    <input id="answerInput" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+  </div>
+</div>
+
+<div id="flash"><div class="msg" id="flashMsg"></div></div>
+
+<script>
+/* ====================== KELİME LİSTESİ ======================
+   Tanımlar TDK Güncel Türkçe Sözlük'ten uyarlanmıştır.
+   d: zorluk -> 'k' kolay, 'o' orta, 'z' zor (günlük kullanım sıklığına göre)
+   Uzunluğa göre otomatik gruplanır.                              */
+const WORDS = [
+  /* ---- 4 HARF ---- */
+  {w:"KAPI", d:"k", c:"Bir yere girip çıkarken geçilen, açılıp kapanan bölme."},
+  {w:"OKUL", d:"k", c:"Öğrencilere eğitim ve öğretim verilen kurum."},
+  {w:"KALP", d:"k", c:"Kanı vücuda pompalayan, kas yapılı organ; yürek."},
+  {w:"ELMA", d:"k", c:"Gülgillerden bir ağacın yuvarlak, sulu, yenen meyvesi."},
+  {w:"MASA", d:"k", c:"Üzerinde yemek yenen veya iş görülen, ayaklı düz mobilya."},
+  {w:"AYAK", d:"k", c:"Bacağın yere basan, yürümeyi sağlayan alt bölümü."},
+  {w:"PARA", d:"k", c:"Alışverişte değişim aracı olarak kullanılan madenî veya kâğıt nesne."},
+  {w:"SAAT", d:"k", c:"Zamanı gösteren veya ölçen alet."},
+  {w:"KEDİ", d:"k", c:"Evlerde beslenen, fare avlayan, küçük, evcil memeli."},
+  {w:"ANNE", d:"k", c:"Çocuğu olan kadın; ana."},
+  {w:"BABA", d:"k", c:"Çocuğu olan erkek."},
+  {w:"OYUN", d:"k", c:"Belli kuralları olan, eğlenmek için yapılan etkinlik."},
+  {w:"GECE", d:"k", c:"Güneşin batmasından doğmasına kadar süren karanlık süre."},
+  {w:"ADAM", d:"k", c:"Erkek kişi."},
+  {w:"KOLA", d:"k", c:"Gazlı, kahverengi, kafeinli bir içecek."},
+  {w:"RENK", d:"o", c:"Cisimlerin yansıttığı ışığın gözde oluşturduğu duyum."},
+  {w:"KÖŞE", d:"o", c:"İki yüzeyin veya çizginin birleştiği yer."},
+  {w:"DERE", d:"o", c:"Çoğu yazın kuruyan, küçük akarsu."},
+  {w:"KALE", d:"o", c:"Bir yeri korumak için surlarla çevrilmiş savunma yapısı."},
+  {w:"NANE", d:"o", c:"Hoş kokulu, baharat ve ilaç olarak kullanılan bir bitki."},
+  {w:"KÜRK", d:"o", c:"Bazı hayvanların tüylü, işlenmiş derisinden yapılan giysi."},
+  {w:"ÇİVİ", d:"o", c:"Bir şeyi tutturmak için çakılan, ucu sivri metal parça."},
+  {w:"AHIR", d:"o", c:"Büyükbaş evcil hayvanların barındırıldığı kapalı yer."},
+  {w:"FİİL", d:"o", c:"İş, oluş veya durum bildiren söz türü; eylem."},
+  {w:"ZAİL", d:"z", c:"Sona eren, ortadan kalkan, geçip giden."},
+  {w:"NÜVE", d:"z", c:"Bir şeyin özünü oluşturan başlangıç çekirdeği."},
+  {w:"İCAP", d:"z", c:"Gerek, gereklik; durumun gerektirdiği şey."},
+  {w:"İRİN", d:"z", c:"Yara ve çıbanlarda oluşan, sarımsı koyu sıvı; cerahat."},
+
+  /* ---- 5 HARF ---- */
+  {w:"ARABA", d:"k", c:"Tekerlekli, motorla hareket eden kara taşıtı."},
+  {w:"DENİZ", d:"k", c:"Yer yüzeyinin büyük bölümünü kaplayan geniş, tuzlu su kütlesi."},
+  {w:"ÇOCUK", d:"k", c:"Bebeklik ile ergenlik arasındaki gelişim dönemindeki insan."},
+  {w:"BALIK", d:"k", c:"Suda yaşayan, solungaçla soluyan, yüzgeçli omurgalı hayvan."},
+  {w:"KİTAP", d:"k", c:"Bir konuyu işleyen, basılı veya yazılı sayfalardan oluşan eser."},
+  {w:"KALEM", d:"k", c:"Yazı yazmaya veya çizmeye yarayan araç."},
+  {w:"ÇİÇEK", d:"k", c:"Bir bitkinin çoğu renkli ve kokulu olan üreme organı."},
+  {w:"EKMEK", d:"k", c:"Tahıl unundan hamur yapılıp pişirilen temel besin."},
+  {w:"KÖPEK", d:"k", c:"Bekçilik ve avcılıkta yararlanılan, evcil, sadık memeli."},
+  {w:"ÇANTA", d:"k", c:"İçine eşya konularak taşınan, deri veya kumaştan yapılmış kap."},
+  {w:"GÜNEŞ", d:"k", c:"Çevresindeki gezegenlere ışık ve ısı veren büyük gök cismi."},
+  {w:"BAHÇE", d:"k", c:"Sebze, meyve veya çiçek yetiştirilen çevrili toprak parçası."},
+  {w:"DUVAR", d:"k", c:"Bir yapıyı çevreleyen veya bölen, örülmüş düşey bölüm."},
+  {w:"ORMAN", d:"k", c:"Geniş bir alanı kaplayan sık ağaç topluluğu."},
+  {w:"ASKER", d:"k", c:"Orduda görev yapan, silah altına alınmış kimse."},
+  {w:"KÖFTE", d:"k", c:"Kıymanın yoğrulup şekil verilerek pişirilmesiyle yapılan yemek."},
+  {w:"KÖPRÜ", d:"o", c:"Bir engelin iki yakasını birbirine bağlayan geçit yapısı."},
+  {w:"LAMBA", d:"o", c:"Işık vermeye yarayan aydınlatma aracı."},
+  {w:"ZEHİR", d:"o", c:"Canlı dokuya girince zarar veren veya öldüren madde."},
+  {w:"ÇEŞME", d:"o", c:"Su almak için yapılmış, lüleli su haznesi."},
+  {w:"GURUR", d:"o", c:"Kendini beğenme, büyüklenme; onur."},
+  {w:"HAMAM", d:"o", c:"Yıkanmak için yapılmış, ısıtılan kapalı yer."},
+  {w:"TÜTÜN", d:"o", c:"Yaprakları kurutulup sigara yapımında kullanılan bitki."},
+  {w:"NABIZ", d:"o", c:"Atardamarların kalp atışıyla yaptığı vuru."},
+  {w:"ZÜMRE", d:"o", c:"Aynı durumda olan kişilerin oluşturduğu topluluk; grup."},
+  {w:"NÜANS", d:"z", c:"İnce ayrım, çok küçük fark."},
+  {w:"AMADE", d:"z", c:"Hazır, hizmete sunulmuş."},
+  {w:"MAHYA", d:"z", c:"Ramazanda iki minare arasına ışıkla yazılan yazı veya resim."},
+
+  /* ---- 6 HARF ---- */
+  {w:"BALKON", d:"k", c:"Binanın dışına çıkıntı yapan, korkuluklu, üstü açık bölüm."},
+  {w:"TAVŞAN", d:"k", c:"Uzun kulaklı, hızlı koşan, ürkek bir kemirgen."},
+  {w:"DEFTER", d:"k", c:"İçine yazı yazmak için sayfaları olan kâğıt eşya."},
+  {w:"KARTAL", d:"k", c:"Yüksekten uçan, keskin gözlü, güçlü yırtıcı kuş."},
+  {w:"ELBİSE", d:"k", c:"Vücudu örtmek için giyilen, dikilmiş giysi."},
+  {w:"KAPLAN", d:"k", c:"Postu çizgili, Asya'da yaşayan büyük, yırtıcı kedi."},
+  {w:"HAYVAN", d:"k", c:"İnsan dışında, hareket edebilen, duyu organları olan canlı."},
+  {w:"MEKTUP", d:"k", c:"Bir kimseye gönderilmek üzere yazılan haber veya yazı."},
+  {w:"TABLET", d:"k", c:"Dokunmatik ekranlı, taşınabilir küçük bilgisayar."},
+  {w:"PEYNİR", d:"k", c:"Sütün mayalanıp suyu alınarak yapılan besin."},
+  {w:"ZEYTİN", d:"k", c:"Yağı çıkarılan veya salamura yapılan, küçük meyve."},
+  {w:"ZAMBAK", d:"o", c:"Güzel kokulu, beyaz veya renkli çiçekleri olan soğanlı bitki."},
+  {w:"SİNCAP", d:"o", c:"Ağaçlarda yaşayan, gür kuyruklu, fındık yiyen kemirgen."},
+  {w:"KUZGUN", d:"o", c:"İri gövdeli, kara renkli bir karga türü."},
+  {w:"ZÜMRÜT", d:"o", c:"Yeşil renkli, değerli bir süs taşı."},
+  {w:"MERMER", d:"o", c:"Yapıda ve heykelde kullanılan, parlatılabilen sert taş."},
+  {w:"KANDİL", d:"o", c:"İçinde yağ ve fitil bulunan eski aydınlatma aracı."},
+  {w:"HASRET", d:"o", c:"Özlem; bir şeyi veya kimseyi görmeyi çok isteme."},
+  {w:"KISMET", d:"o", c:"Talih, nasip; alın yazısı."},
+  {w:"TAHKİM", d:"z", c:"Sağlamlaştırma, güçlendirme; bir yeri savunmaya hazırlama."},
+  {w:"MÜZMİN", d:"z", c:"Uzun süredir devam eden, kronik."},
+  {w:"KUDRET", d:"z", c:"Güç, erk; bir işi yapabilme gücü."},
+
+  /* ---- 7 HARF ---- */
+  {w:"ARKADAŞ", d:"k", c:"Birbiriyle iyi geçinen, dostluk kuran kimse."},
+  {w:"PENCERE", d:"k", c:"Işık ve hava girmesi için duvarda bırakılan açıklık."},
+  {w:"KELEBEK", d:"k", c:"Geniş, renkli kanatları olan, çiçek tozuyla beslenen böcek."},
+  {w:"TELEFON", d:"k", c:"Sesi uzağa ileterek konuşmayı sağlayan iletişim aracı."},
+  {w:"ŞEMSİYE", d:"k", c:"Yağmur veya güneşten korunmak için kullanılan katlanır araç."},
+  {w:"DENİZCİ", d:"k", c:"Gemilerde çalışan veya denizcilik mesleğinden olan kimse."},
+  {w:"DOMATES", d:"k", c:"Kırmızı renkli, sulu, sebze olarak kullanılan meyve."},
+  {w:"ÖĞRENCİ", d:"k", c:"Bir okul veya kurumda öğrenim gören kimse."},
+  {w:"TİYATRO", d:"k", c:"Oyunların sahnelendiği sanat dalı veya yapı."},
+  {w:"MANZARA", d:"k", c:"Bir yerden bakıldığında gözün gördüğü doğa görüntüsü."},
+  {w:"AHTAPOT", d:"o", c:"Sekiz kollu, yumuşak gövdeli bir deniz hayvanı."},
+  {w:"KARGAŞA", d:"o", c:"Düzensizlik, karışıklık, gürültülü kalabalık."},
+  {w:"HEYECAN", d:"o", c:"Sevinç veya korku gibi etkilerle oluşan coşku ve telaş."},
+  {w:"NASİHAT", d:"o", c:"Öğüt; yol gösterici söz."},
+  {w:"ZİYARET", d:"o", c:"Birini veya bir yeri görmeye gitme."},
+  {w:"İHTİYAR", d:"o", c:"Yaşı ilerlemiş, yaşlı kimse."},
+  {w:"MİSAFİR", d:"o", c:"Konuk; bir yere veya kimseye konuk olan kişi."},
+  {w:"MASKARA", d:"o", c:"Gülünç duruma düşürülen kimse; soytarı."},
+  {w:"İSTİHZA", d:"z", c:"Birini küçümseyerek alay etme."},
+  {w:"İLLİYET", d:"z", c:"Sebep-sonuç ilişkisi; nedensellik."},
+  {w:"TEVATÜR", d:"z", c:"Ağızdan ağıza yayılan, doğruluğu kesin olmayan haber."},
+  {w:"MÜLAYİM", d:"z", c:"Yumuşak huylu, uysal, sert olmayan."},
+
+  /* ---- 8 HARF ---- */
+  {w:"ÖĞRETMEN", d:"k", c:"Okulda öğrencilere ders veren, eğitim veren kimse."},
+  {w:"BİSİKLET", d:"k", c:"İki tekerlekli, pedal çevrilerek sürülen taşıt."},
+  {w:"PORTAKAL", d:"k", c:"Turuncu renkli, sulu, C vitamini zengini turunçgil."},
+  {w:"ÇİKOLATA", d:"k", c:"Kakao, şeker ve süt ile yapılan tatlı yiyecek."},
+  {w:"MERDİVEN", d:"k", c:"Bir düzeyden başka bir düzeye çıkmayı sağlayan basamaklı yapı."},
+  {w:"GAZETECİ", d:"k", c:"Gazete için haber toplayan, yazan veya yöneten kimse."},
+  {w:"DONDURMA", d:"k", c:"Süt, şeker ve çeşni ile yapılan, dondurularak yenen tatlı."},
+  {w:"KAHVALTI", d:"k", c:"Sabahları yenen ilk öğün."},
+  {w:"AKVARYUM", d:"o", c:"İçinde su hayvanları beslenen, cam bir kap."},
+  {w:"YILDIRIM", d:"o", c:"Bulutla yer arasında oluşan güçlü elektrik boşalması."},
+  {w:"PROFESÖR", d:"o", c:"Yüksek öğretimde en üst akademik unvana sahip öğretim üyesi."},
+  {w:"GÜVERCİN", d:"o", c:"Kısa boyunlu, tombul, evcilleştirilebilen bir kuş."},
+  {w:"HÜKÜMDAR", d:"o", c:"Bir ülkeyi yöneten en üst düzey kişi; hükümran."},
+  {w:"MÜHENDİS", d:"o", c:"Mühendislik öğrenimi görmüş, teknik işleri yöneten kimse."},
+  {w:"TERCÜMAN", d:"o", c:"Bir dilden başka dile çeviri yapan kimse."},
+  {w:"MARANGOZ", d:"o", c:"Ağaç işleyerek mobilya ve eşya yapan usta."},
+  {w:"TAHAYYÜL", d:"z", c:"Bir şeyi zihinde canlandırma; hayal etme."},
+  {w:"MÜTEVAZI", d:"z", c:"Alçak gönüllü, gösterişsiz."},
+  {w:"MUKADDER", d:"z", c:"Önceden belirlenmiş, alın yazısı olan."},
+  {w:"MÜSAMAHA", d:"z", c:"Hoşgörü; bir kusura göz yumma."},
+
+  /* ---- 9 HARF ---- */
+  {w:"KÜTÜPHANE", d:"k", c:"Kitapların toplanıp okuyucuya sunulduğu yer veya kurum."},
+  {w:"KALABALIK", d:"k", c:"Çok sayıda insanın bir arada bulunması; insan yığını."},
+  {w:"GÖKKUŞAĞI", d:"k", c:"Yağmurdan sonra gökyüzünde görülen yedi renkli ışık yayı."},
+  {w:"PAZARTESİ", d:"k", c:"Haftanın pazardan sonra gelen ilk iş günü."},
+  {w:"DENİZALTI", d:"k", c:"Su altında gidebilen savaş veya araştırma gemisi."},
+  {w:"KIRLANGIÇ", d:"k", c:"Çatal kuyruklu, hızlı uçan, göçmen bir kuş."},
+  {w:"BAŞKANLIK", d:"o", c:"Bir topluluğun veya kurumun başında bulunma görevi."},
+  {w:"İMPARATOR", d:"o", c:"Büyük bir devleti, imparatorluğu yöneten hükümdar."},
+  {w:"AVUKATLIK", d:"o", c:"Hukuki konularda kişileri savunma ve danışmanlık mesleği."},
+  {w:"HAVAALANI", d:"o", c:"Uçakların inip kalktığı, geniş tesisli alan."},
+  {w:"DOKTORLUK", d:"o", c:"Hastaları iyileştirme mesleği; hekimlik."},
+  {w:"ŞEKERLEME", d:"o", c:"Kısa süreli hafif uyku; ayrıca şekerden yapılan tatlı."},
+  {w:"MÜTEAHHİT", d:"z", c:"Bir işi sözleşmeyle yapmayı üstlenen kimse; üstenci."},
+  {w:"İSTİKAMET", d:"z", c:"Doğrultu, yön; gidilen taraf."},
+  {w:"MUKAVEMET", d:"z", c:"Karşı koyma, dayanma, direnç."},
+  {w:"MÜSTAKBEL", d:"z", c:"Gelecekte olacak; gelecekteki."},
+  {w:"MÜTEVELLİ", d:"z", c:"Bir vakfı yönetmekle görevli kimse."},
+
+  /* ---- 10 HARF ---- */
+  {w:"TELEVİZYON", d:"k", c:"Görüntü ve sesi uzaktan alıp ekrana yansıtan aygıt."},
+  {w:"HELİKOPTER", d:"k", c:"Pervaneleri sayesinde dikey inip kalkabilen hava taşıtı."},
+  {w:"BİLGİSAYAR", d:"k", c:"Verileri işleyen, hesaplayan ve saklayan elektronik aygıt."},
+  {w:"ÜNİVERSİTE", d:"k", c:"Birçok fakülteden oluşan en üst düzey öğretim kurumu."},
+  {w:"DONDURMACI", d:"o", c:"Dondurma yapan veya satan kimse."},
+  {w:"ORMANCILIK", d:"o", c:"Ormanları yetiştirme, koruma ve işletme işi."},
+  {w:"DENİZANASI", d:"o", c:"Saydam, jelimsi gövdeli, yakıcı bir deniz canlısı."},
+  {w:"İSTANBULLU", d:"o", c:"İstanbul'da doğmuş veya yaşayan kimse."},
+  {w:"PSİKOLOJİK", d:"o", c:"Ruh durumuyla ilgili; ruhsal."},
+  {w:"MUTASAVVIF", d:"z", c:"Tasavvuf yolunu benimseyen kimse; sofu."},
+  {w:"İSTİKRARLI", d:"z", c:"Kararlı, dengeli, sürekli aynı düzeyde olan."},
+  {w:"MÜTEHASSIS", d:"z", c:"Bir konuda uzmanlaşmış kimse; uzman."},
+  {w:"İHTİYATKAR", d:"z", c:"Önlemli, tedbirli davranan."},
+  {w:"İSTİSMARCI", d:"z", c:"Bir şeyi veya kimseyi kötüye kullanan kimse."},
+];
+
+/* ====================== OYUN MOTORU ====================== */
+const Game = (()=>{
+  const TOTAL = 240;        // toplam süre (sn)
+  const ANSWER = 20;        // cevap süresi (sn)
+  const PER_LETTER = 100;   // harf değeri
+  const PER_LENGTH = 2;     // her uzunluktan kaç soru (toplam 14)
+  const LENGTHS = [4,5,6,7,8,9,10];
+  const DIFFS = ['k','o','z'];
+  const DIFF_LABEL = {k:'Kolay', o:'Orta', z:'Zor'};
+  const DIFF_COLOR = {k:'#22c55e', o:'#fbbf24', z:'#ef4444'};
+  // uzunluğa göre [kolay, orta, zor] olasılıkları (uzadıkça zorlaşır)
+  const WEIGHTS = {
+    4:[0.86,0.12,0.02], 5:[0.84,0.14,0.02],
+    6:[0.66,0.27,0.07], 7:[0.60,0.30,0.10],
+    8:[0.45,0.37,0.18], 9:[0.40,0.38,0.22], 10:[0.38,0.40,0.22]
+  };
+
+  // pools[L] = {k:[], o:[], z:[]}
+  const pools = {};
+  WORDS.forEach(o=>{
+    const L=o.w.length;
+    if(L<4||L>10||!o.c) return;
+    const d = DIFFS.includes(o.d)? o.d : 'k';
+    (pools[L] = pools[L] || {k:[],o:[],z:[]})[d].push(o);
+  });
+
+  let score=0, solved=0, missed=0, count=0;
+  let remaining=TOTAL, clockTimer=null, clockEnd=0;
+  let answering=false, ansTimer=null, ansEnd=0;
+  let cur=null, queue=[], qi=0, spinning=false, resolving=false, muted=false, gameOver=false;
+  let audioCtx=null;
+
+  const $ = id=>document.getElementById(id);
+  const show = id=>{document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active');};
+
+  /* ---- ses ---- */
+  function beep(freq,dur=0.12,type="sine",vol=0.2){
+    if(muted) return;
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type=type; o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(vol,audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+      o.start(); o.stop(audioCtx.currentTime+dur);
+    }catch(e){}
+  }
+  const sCorrect=()=>{beep(660,.1,"triangle");setTimeout(()=>beep(880,.18,"triangle"),90);};
+  const sWrong=()=>{beep(180,.35,"sawtooth",.18);};
+  const sLetter=()=>beep(520,.08,"square",.12);
+  const sTick=()=>beep(440,.05,"square",.08);
+
+  /* ---- 14 soruluk kuyruk: her uzunluktan 2'şer, ağırlıklı zorluk ---- */
+  function pickDiff(L){
+    const w = WEIGHTS[L] || [0.6,0.3,0.1];
+    const r = Math.random();
+    if(r < w[0]) return 'k';
+    if(r < w[0]+w[1]) return 'o';
+    return 'z';
+  }
+  function pickWord(L, diff, used){
+    const order = diff==='z' ? ['z','o','k'] : diff==='o' ? ['o','k','z'] : ['k','o','z'];
+    for(const d of order){
+      const arr = ((pools[L]&&pools[L][d])||[]).filter(o=>!used.has(o.w));
+      if(arr.length) return arr[Math.floor(Math.random()*arr.length)];
+    }
+    return null;
+  }
+  function buildQueue(){
+    const q=[], used=new Set();
+    LENGTHS.forEach(L=>{
+      for(let k=0;k<PER_LENGTH;k++){
+        const pick = pickWord(L, pickDiff(L), used);
+        if(pick){ used.add(pick.w); q.push(pick); }
+      }
+    });
+    return q;
+  }
+
+  function nextWord(){
+    if(qi>=queue.length){ endGame(); return; }
+    const pick = queue[qi]; qi++;
+    cur = { word:pick.w, clue:pick.c, len:pick.w.length, diff:(pick.d||'k'), revealed:new Set() };
+    count = qi;
+    renderWord();
+  }
+
+  function value(){ return (cur.len - cur.revealed.size) * PER_LETTER; }
+
+  function renderWord(){
+    $('clue').textContent = cur.clue;
+    $('lenVal').textContent = cur.len;
+    $('openVal').textContent = 0;
+    $('valVal').textContent = value();
+    $('cntVal').textContent = count + ' / ' + queue.length;
+    $('wordReveal').textContent = '';
+    const t=$('tiles'); t.innerHTML='';
+    for(let i=0;i<cur.len;i++){
+      const d=document.createElement('div'); d.className='tile'; d.id='tile'+i;
+      t.appendChild(d);
+    }
+    updateLetterBtn();
+  }
+  function updateLetterBtn(){
+    // tüm harfler açılabilir; hepsi açılınca değer 0 olur ve buton kapanır
+    $('btnLetter').disabled = answering || spinning || cur.revealed.size >= cur.len;
+  }
+
+  /* ---- çarkıfelek harf animasyonu ---- */
+  const ALPHA = "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ";
+  function spinTile(pos, finalLetter, done){
+    const tile=$('tile'+pos);
+    tile.classList.add('spin');
+    let i=0; const total=20; let delay=28;
+    function step(){
+      tile.textContent = ALPHA[Math.floor(Math.random()*ALPHA.length)];
+      beep(220 + i*16, .025, "square", .045);        // çarkıfelek tıkırtısı (tırrrt)
+      i++;
+      if(i>=total){
+        tile.classList.remove('spin');
+        tile.textContent = finalLetter;
+        tile.classList.add('land');
+        setTimeout(()=>tile.classList.remove('land'),400);
+        sLetter();                                    // eski bitiş sesi
+        done && done();
+        return;
+      }
+      if(i > total*0.55) delay += 13;                // sona doğru yavaşla
+      setTimeout(step, delay);
+    }
+    step();
+  }
+
+  function takeLetter(){
+    if(answering || spinning || resolving || !cur) return;
+    if(cur.revealed.size >= cur.len) return;
+    const hidden=[];
+    for(let i=0;i<cur.len;i++) if(!cur.revealed.has(i)) hidden.push(i);
+    const pos = hidden[Math.floor(Math.random()*hidden.length)];
+    spinning=true; updateLetterBtn();
+    spinTile(pos, cur.word[pos], ()=>{
+      cur.revealed.add(pos);
+      $('openVal').textContent=cur.revealed.size;
+      $('valVal').textContent=value();
+      spinning=false;
+      if(cur.revealed.size >= cur.len){
+        autoZeroPass();              // tüm harfler açıldı: 0 puanla geç
+      }else{
+        updateLetterBtn();
+      }
+    });
+  }
+
+  // Tüm harfler "Harf Al" ile açıldı → cevaplatmadan 0 puanla sonraki soruya geç
+  function autoZeroPass(){
+    resolving=true;
+    $('btnLetter').disabled=true;
+    missed++;
+    flash('0', '#94a3b8'); sWrong();
+    $('wordReveal').textContent = 'Tüm harfler açıldı · Cevap: ' + cur.word;
+    pauseClock();
+    setTimeout(()=>{ if(!gameOver){ resolving=false; resumeClock(); nextWord(); } }, 1000);
+  }
+
+  /* ---- süre ---- */
+  function startClock(){ clockEnd = Date.now() + remaining*1000; clockTimer = setInterval(tickClock,200); tickClock(); }
+  function pauseClock(){ if(clockTimer){clearInterval(clockTimer); clockTimer=null;} remaining = Math.max(0,(clockEnd-Date.now())/1000); }
+  function resumeClock(){ if(gameOver) return; startClock(); }
+  function tickClock(){
+    remaining = Math.max(0,(clockEnd-Date.now())/1000);
+    const m=Math.floor(remaining/60), s=Math.floor(remaining%60);
+    const v=$('clockVal');
+    v.textContent = m+':'+String(s).padStart(2,'0');
+    v.classList.toggle('low', remaining<=15);
+    if(remaining<=0){ clearInterval(clockTimer); clockTimer=null; endGame(); }
+  }
+
+  /* ---- cevap aşaması ---- */
+  function buzz(){
+    if(answering || spinning || resolving || !cur || gameOver) return;
+    answering=true;
+    pauseClock();
+    updateLetterBtn();
+    $('ovalVal').textContent = value();
+    const inp=$('answerInput'); inp.value='';
+    $('overlay').classList.add('active');
+    setTimeout(()=>inp.focus(),50);
+    ansEnd = Date.now()+ANSWER*1000;
+    ansTimer = setInterval(tickAns, 100);
+    tickAns();
+  }
+  function tickAns(){
+    const left = Math.max(0,(ansEnd-Date.now())/1000);
+    const n=Math.ceil(left);
+    $('ringNum').textContent = n;
+    const frac = left/ANSWER;
+    $('ringFg').style.strokeDashoffset = (326.7*(1-frac)).toFixed(1);
+    $('ringFg').setAttribute('stroke', left<=5? '#ef4444':'#ffd23f');
+    if(left<=5 && Math.abs(left-n)<0.06) sTick();
+    if(left<=0){ clearInterval(ansTimer); ansTimer=null; resolve(false,true); }
+  }
+  function norm(s){ return (s||'').toLocaleUpperCase('tr-TR').replace(/\s+/g,'').trim(); }
+  function submitAnswer(){
+    if(!answering) return;
+    const ok = norm($('answerInput').value) === norm(cur.word);
+    if(ansTimer){clearInterval(ansTimer); ansTimer=null;}
+    resolve(ok,false);
+  }
+
+  function revealAll(){
+    for(let i=0;i<cur.len;i++){
+      const t=$('tile'+i);
+      if(t){ t.classList.remove('spin'); t.textContent=cur.word[i]; t.classList.add('land'); }
+    }
+    $('openVal').textContent=cur.len;
+  }
+  function resolve(correct, timeout){
+    answering=false; resolving=true;
+    $('overlay').classList.remove('active');
+    const val = value();
+    if(correct){
+      score += val; solved++;
+      flash('+'+val, '#22c55e'); sCorrect();
+    }else{
+      score -= val; missed++;
+      flash(val>0 ? '−'+val : '0', val>0 ? '#ef4444' : '#94a3b8'); sWrong();
+    }
+    $('scoreVal').textContent = score;
+    // cevabı tüm harfleriyle göster, 1 sn bekle, sonra sıradaki soru
+    revealAll();
+    $('wordReveal').textContent = (correct ? 'Doğru! ' : 'Cevap: ') + cur.word + (timeout && !correct ? '  (süre doldu)' : '');
+    setTimeout(()=>{ if(!gameOver){ resolving=false; resumeClock(); nextWord(); } }, 1000);
+  }
+
+  function flash(msg,color){
+    const f=$('flash'), m=$('flashMsg');
+    m.textContent=msg; m.style.color=color;
+    f.style.display='flex';
+    m.style.animation='none'; void m.offsetWidth; m.style.animation='';
+    setTimeout(()=>f.style.display='none',850);
+  }
+
+  /* ---- akış ---- */
+  function start(){
+    score=0; solved=0; missed=0; count=0; remaining=TOTAL; gameOver=false; answering=false; spinning=false; resolving=false;
+    queue=buildQueue(); qi=0;
+    $('scoreVal').textContent=0;
+    show('gameScreen');
+    nextWord();
+    startClock();
+    try{ audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+  }
+  function endGame(){
+    gameOver=true; answering=false;
+    if(clockTimer){clearInterval(clockTimer);clockTimer=null;}
+    if(ansTimer){clearInterval(ansTimer);ansTimer=null;}
+    $('overlay').classList.remove('active');
+    let best = +(localStorage.getItem('ko_best')||0);
+    if(score>best){ best=score; localStorage.setItem('ko_best', best); }
+    $('finalScore').textContent=score;
+    $('finalSolved').textContent=solved;
+    $('finalMiss').textContent=missed;
+    $('finalBest').textContent=best;
+    show('endScreen');
+    beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.22),260);
+  }
+  function quit(){ remaining=0; endGame(); }
+  function toggleMute(){ muted=!muted; $('muteBtn').textContent = muted?'🔇 Ses':'🔊 Ses'; }
+
+  document.addEventListener('keydown', e=>{
+    if($('gameScreen').classList.contains('active')){
+      if(answering){ if(e.key==='Enter'){ e.preventDefault(); submitAnswer(); } return; }
+      if(e.key==='h'||e.key==='H'){ takeLetter(); }
+      else if(e.key===' '){ e.preventDefault(); buzz(); }
+    }
+  });
+
+  return { start, takeLetter, buzz, quit, toggleMute };
+})();
+</script>
+</body>
+</html>

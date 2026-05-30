@@ -1,0 +1,12 @@
+# Claude Code / editör araçları
+.claude/
+
+# İşletim sistemi dosyaları
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editör
+.vscode/
+.idea/
+*.swp
