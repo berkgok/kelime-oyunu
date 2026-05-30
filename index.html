@@ -562,7 +562,7 @@ const Game = (()=>{
   }
 
   /* ---- süre ---- */
-  function startClock(){ clockEnd = Date.now() + remaining*1000; clockTimer = setInterval(tickClock,200); tickClock(); }
+  function startClock(){ if(clockTimer) clearInterval(clockTimer); clockEnd = Date.now() + remaining*1000; clockTimer = setInterval(tickClock,200); tickClock(); }
   function pauseClock(){ if(clockTimer){clearInterval(clockTimer); clockTimer=null;} remaining = Math.max(0,(clockEnd-Date.now())/1000); }
   function resumeClock(){ if(gameOver) return; startClock(); }
   function tickClock(){
@@ -650,6 +650,7 @@ const Game = (()=>{
     try{ audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
   }
   function endGame(){
+    if(gameOver) return;          // tek seferlik — bitiş sesi asla loop'a girmesin
     gameOver=true; answering=false;
     if(clockTimer){clearInterval(clockTimer);clockTimer=null;}
     if(ansTimer){clearInterval(ansTimer);ansTimer=null;}
