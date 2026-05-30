@@ -30,7 +30,8 @@ MAX_RANK = 90000     # bundan daha nadir kelimeleri alma (kalite sınırı)
 # her (uzunluk, zorluk) kovasında en fazla kaç kelime (en yaygınlar seçilir)
 CAP_PER_BUCKET = 700
 MIN_LEN, MAX_LEN = 4, 10
-MIN_DEF_LEN = 12
+MIN_DEF_LEN = 12     # bir anlamın değerlendirmeye alınması için en az uzunluk
+MIN_GOOD    = 16     # nihai tanım bundan kısaysa muğlak kabul edilip elenir
 
 TR_LOWER = set("abcçdefgğhıijklmnoöprsştuüvyzâîû")
 
@@ -88,6 +89,37 @@ def clean_def(anlam, word):
         t = t[:150].rsplit(" ", 1)[0] + "…"
     return t.strip(" ,;:")
 
+_VULGAR_TEXT = re.compile(r"\b(" + "|".join(re.escape(b) for b in BLOCKLIST if len(b) > 2) + r")\b", re.IGNORECASE)
+
+def good_meaning(anlam, word):
+    """bir anlamı temizleyip oyuna uygunsa döndürür, değilse None"""
+    if not anlam or is_ref(anlam):
+        return None
+    c = clean_def(anlam, word)
+    if len(c) < MIN_DEF_LEN or c.count("…") > 1 or c[0].isdigit():
+        return None
+    stem = deaccent(word)[:max(4, len(word) - 1)]
+    if deaccent(c).lower().startswith(stem):        # dairesel (ör. "Abartmak durumu")
+        return None
+    if _VULGAR_TEXT.search(c):                       # tanım metni kaba kelime içeriyor (ör. "...pezevenk")
+        return None
+    return c
+
+def choose_def(anlamlar, word):
+    """Birincil (ilk geçerli) anlamı seç — TDK'da anlamlar önem sırasındadır.
+       Birincil anlam kaba/hakaret ise kelimeyi tamamen ele (None)."""
+    for i, a in enumerate(anlamlar):
+        marks = {o.get("kisa_adi") for o in (a.get("ozelliklerListe") or [])}
+        if marks & VULGAR_MARKS:
+            if i == 0:
+                return None                          # birincil anlam kaba -> kelimeyi atla
+            continue
+        c = good_meaning((a.get("anlam") or "").strip(), word)
+        if c:
+            return c                                 # ilk geçerli anlam (en yaygın sense)
+    return None
+
+# Aynı başmaddenin birden çok kaydı (homonim) olabilir; en zengin olanı tut.
 seen = {}
 for raw in f:
     try:
@@ -96,7 +128,7 @@ for raw in f:
         continue
     # kanonik başmadde (madde): doğru Türkçe yazım. madde_duz bazı kayıtlarda harf yutuyor.
     w = (e.get("madde") or e.get("madde_duz") or "").strip().lower()
-    if not w or w in seen:
+    if not w:
         continue
     if not (MIN_LEN <= len(w) <= MAX_LEN):
         continue
@@ -114,24 +146,14 @@ for raw in f:
     anlamlar = e.get("anlamlarListe") or []
     if not anlamlar:
         continue
-    a0 = anlamlar[0]
-    marks = {o.get("kisa_adi") for o in (a0.get("ozelliklerListe") or [])}
-    if marks & VULGAR_MARKS:                        # kaba/hakaret içerikli -> ele
-        continue
-    anlam = (a0.get("anlam") or "").strip()
-    if len(anlam) < MIN_DEF_LEN or is_ref(anlam):
-        continue
-    c = clean_def(anlam, w)
-    if len(c) < MIN_DEF_LEN or c.count("…") > 1:
-        continue
-    if c[0].isdigit():                             # bozuk tanım (ör. "343 ergenlik")
-        continue
-    # dairesel tanımı ele: tanım cevabın köküyle başlıyorsa (ör. "Abartmak durumu")
-    stem = deaccent(w)[:max(4, len(w) - 1)]
-    if deaccent(c).lower().startswith(stem):
+    c = choose_def(anlamlar, w)
+    if not c or len(c) < MIN_GOOD:                 # muğlak/çok kısa tanımı ele
         continue
     d = "k" if rank < EASY_MAX else ("o" if rank < MED_MAX else "z")
-    seen[w] = {"w": tr_upper(w), "c": c, "d": d, "_r": rank, "_L": len(w)}
+    score = (int(e.get("anlam_say") or 0), len(c))  # en çok anlamlı (asıl homonim), sonra en açıklayıcı
+    prev = seen.get(w)
+    if prev is None or score > prev["_score"]:
+        seen[w] = {"w": tr_upper(w), "c": c, "d": d, "_r": rank, "_L": len(w), "_score": score}
 
 # ---------------------------------------------------------------- kovalar + cap
 buckets = {}   # (L,d) -> list
