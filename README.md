@@ -32,7 +32,7 @@ Soruların yaklaşık **%60'ı kolay, %30'u orta, %10'u zordur** (zorluk, kelime
 - 🔊 **Web Audio ile ses efektleri** — harf, doğru/yanlış cevap ve geri sayım sesleri (kapatılabilir).
 - 📱 **Tam mobil uyumlu** — telefon, tablet ve masaüstünde akışkan, taşmasız tasarım.
 - 🏆 **Rekor kaydı** — en yüksek skorun tarayıcıya (`localStorage`) kaydedilir.
-- 📚 **3000+ kelimelik havuz** — TDK Güncel Türkçe Sözlük dump'ı, Türkçe sıklık listesiyle harmanlanarak üretilir; havuz `kelimeler.json` dosyasından yüklenir (yüklenemezse gömülü yedek havuza düşer).
+- 📚 **6800+ kelimelik havuz** — TDK Güncel Türkçe Sözlük dump'ı, Türkçe sıklık listesiyle harmanlanarak üretilir; havuz `kelimeler.json` dosyasından yüklenir (yüklenemezse gömülü yedek havuza düşer).
 - ⌨️ **Klavye desteği** — `H` ile harf al, `Boşluk` ile cevapla, `Enter` ile gönder.
 
 ---

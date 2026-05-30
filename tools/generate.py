@@ -20,13 +20,15 @@ OUT  = os.path.join(HERE, "..", "kelimeler.json")
 os.makedirs(DATA, exist_ok=True)
 
 TDK_URL  = "https://raw.githubusercontent.com/ogun/guncel-turkce-sozluk/master/sozluk/v12/v12.gts.json.tar.gz"
-FREQ_URL = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/tr/tr_50k.txt"
+FREQ_URL = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/tr/tr_full.txt"
+FREQ_FILE = "tr_full.txt"
 
 # --- zorluk eşikleri (sıklık sırasına göre; düşük sıra = daha yaygın) ---
-EASY_MAX = 6000      # rank < 6000  -> kolay
-MED_MAX  = 18000     # 6000..18000  -> orta ;  > 18000 -> zor
+EASY_MAX = 6000      # rank < 6000   -> kolay
+MED_MAX  = 20000     # 6000..20000   -> orta ;  20000+ -> zor
+MAX_RANK = 90000     # bundan daha nadir kelimeleri alma (kalite sınırı)
 # her (uzunluk, zorluk) kovasında en fazla kaç kelime (en yaygınlar seçilir)
-CAP_PER_BUCKET = 350
+CAP_PER_BUCKET = 700
 MIN_LEN, MAX_LEN = 4, 10
 MIN_DEF_LEN = 12
 
@@ -47,7 +49,7 @@ def deaccent(s):
     return s.replace("â", "a").replace("î", "i").replace("û", "u")
 
 # ---------------------------------------------------------------- frekans
-freq_raw = fetch(FREQ_URL, os.path.join(DATA, "tr_50k.txt")).decode("utf-8")
+freq_raw = fetch(FREQ_URL, os.path.join(DATA, FREQ_FILE)).decode("utf-8")
 freq = {}
 for i, line in enumerate(freq_raw.strip().split("\n")):
     w = line.split(" ")[0].strip().lower()
@@ -85,7 +87,8 @@ for raw in f:
         e = json.loads(raw)
     except Exception:
         continue
-    w = (e.get("madde_duz") or e.get("madde") or "").strip().lower()
+    # kanonik başmadde (madde): doğru Türkçe yazım. madde_duz bazı kayıtlarda harf yutuyor.
+    w = (e.get("madde") or e.get("madde_duz") or "").strip().lower()
     if not w or w in seen:
         continue
     if not (MIN_LEN <= len(w) <= MAX_LEN):
@@ -97,7 +100,7 @@ for raw in f:
     if e.get("cogul_mu") in ("1", 1):              # çoğul başmadde ele
         continue
     rank = freq.get(deaccent(w))
-    if rank is None:                               # sıklık listesinde yoksa (nadir) ele
+    if rank is None or rank >= MAX_RANK:           # sıklık listesinde yok ya da çok nadir -> ele
         continue
     anlamlar = e.get("anlamlarListe") or []
     if not anlamlar:
@@ -107,6 +110,8 @@ for raw in f:
         continue
     c = clean_def(anlam, w)
     if len(c) < MIN_DEF_LEN or c.count("…") > 1:
+        continue
+    if c[0].isdigit():                             # bozuk tanım (ör. "343 ergenlik")
         continue
     # dairesel tanımı ele: tanım cevabın köküyle başlıyorsa (ör. "Abartmak durumu")
     stem = deaccent(w)[:max(4, len(w) - 1)]
@@ -143,8 +148,12 @@ tot_o = sum(1 for x in out if x["d"]=="o")
 tot_z = sum(1 for x in out if x["d"]=="z")
 print(f"\n  Zorluk dağılımı: kolay {tot_k}  orta {tot_o}  zor {tot_z}")
 print("\nÖrnekler:")
-import itertools
 for L in (4, 7, 10):
     for d in ("k","o","z"):
         ex = next((x for x in out if len(x["w"])==L and x["d"]==d), None)
         if ex: print(f"  [{L}h/{d}] {ex['w']}: {ex['c'][:70]}")
+# en nadir (zor) birkaç kelime — kalite kontrolü
+print("\nEn nadir 12 'zor' kelime (kalite kontrolü):")
+zor = sorted([s for s in seen.values() if s['d']=='z'], key=lambda x:-x['_r'])[:12]
+for o in zor:
+    print(f"  rank~{o['_r']:>6}  {o['w']}: {o['c'][:55]}")
