@@ -226,11 +226,12 @@
 <div id="flash"><div class="msg" id="flashMsg"></div></div>
 
 <script>
-/* ====================== KELİME LİSTESİ ======================
-   Tanımlar TDK Güncel Türkçe Sözlük'ten uyarlanmıştır.
-   d: zorluk -> 'k' kolay, 'o' orta, 'z' zor (günlük kullanım sıklığına göre)
-   Uzunluğa göre otomatik gruplanır.                              */
-const WORDS = [
+/* ====================== KELİME LİSTESİ (YEDEK) ======================
+   Asıl havuz çalışma anında kelimeler.json'dan yüklenir (TDK + sıklık listesi,
+   3000+ kelime). Bu gömülü liste yalnızca yedektir: kelimeler.json yüklenemezse
+   (ör. dosya:// ile açılırsa) oyun yine de çalışsın diye.
+   d: zorluk -> 'k' kolay, 'o' orta, 'z' zor                          */
+const FALLBACK_WORDS = [
   /* ---- 4 HARF ---- */
   {w:"KAPI", d:"k", c:"Bir yere girip çıkarken geçilen, açılıp kapanan bölme."},
   {w:"OKUL", d:"k", c:"Öğrencilere eğitim ve öğretim verilen kurum."},
@@ -414,14 +415,26 @@ const Game = (()=>{
     8:[0.45,0.37,0.18], 9:[0.40,0.38,0.22], 10:[0.38,0.40,0.22]
   };
 
-  // pools[L] = {k:[], o:[], z:[]}
-  const pools = {};
-  WORDS.forEach(o=>{
-    const L=o.w.length;
-    if(L<4||L>10||!o.c) return;
-    const d = DIFFS.includes(o.d)? o.d : 'k';
-    (pools[L] = pools[L] || {k:[],o:[],z:[]})[d].push(o);
-  });
+  // pools[L] = {k:[], o:[], z:[]} — havuz; önce yedekten kurulur, sonra kelimeler.json gelince yenilenir
+  let pools = {};
+  let kelimeSayisi = 0;
+  function buildPools(list){
+    const p={};
+    let n=0;
+    list.forEach(o=>{
+      const L=(o.w||'').length;
+      if(L<4||L>10||!o.c) return;
+      const d = DIFFS.includes(o.d)? o.d : 'k';
+      (p[L] = p[L] || {k:[],o:[],z:[]})[d].push(o); n++;
+    });
+    pools=p; kelimeSayisi=n;
+  }
+  buildPools(FALLBACK_WORDS);                       // yedek havuz hemen hazır
+  // asıl (büyük) havuzu yükle; gelince üzerine yaz
+  fetch('kelimeler.json')
+    .then(r=> r.ok ? r.json() : Promise.reject(r.status))
+    .then(d=>{ if(Array.isArray(d) && d.length>50) buildPools(d); })
+    .catch(()=>{ /* yedek havuz kullanılmaya devam eder */ });
 
   let score=0, solved=0, missed=0, count=0;
   let remaining=TOTAL, clockTimer=null, clockEnd=0;

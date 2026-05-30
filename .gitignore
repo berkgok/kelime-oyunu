@@ -1,6 +1,9 @@
 # Claude Code / editör araçları
 .claude/
 
+# Üretici script'in indirdiği ham veriler (büyük; kelimeler.json'a derlenir)
+tools/data/
+
 # İşletim sistemi dosyaları
 .DS_Store
 Thumbs.db

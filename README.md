@@ -32,7 +32,7 @@ Soruların yaklaşık **%60'ı kolay, %30'u orta, %10'u zordur** (zorluk, kelime
 - 🔊 **Web Audio ile ses efektleri** — harf, doğru/yanlış cevap ve geri sayım sesleri (kapatılabilir).
 - 📱 **Tam mobil uyumlu** — telefon, tablet ve masaüstünde akışkan, taşmasız tasarım.
 - 🏆 **Rekor kaydı** — en yüksek skorun tarayıcıya (`localStorage`) kaydedilir.
-- 📚 **150+ kelimelik havuz** — tanımlar TDK Güncel Türkçe Sözlük'ten uyarlanmıştır.
+- 📚 **3000+ kelimelik havuz** — TDK Güncel Türkçe Sözlük dump'ı, Türkçe sıklık listesiyle harmanlanarak üretilir; havuz `kelimeler.json` dosyasından yüklenir (yüklenemezse gömülü yedek havuza düşer).
 - ⌨️ **Klavye desteği** — `H` ile harf al, `Boşluk` ile cevapla, `Enter` ile gönder.
 
 ---
@@ -84,9 +84,27 @@ Statik tek dosya olduğu için yayınlamak çok kolay ve ücretsizdir.
 
 ```
 kelime-oyunu/
-├── index.html   # Oyunun tamamı (HTML + CSS + JS + kelime havuzu)
+├── index.html        # Oyunun tamamı (HTML + CSS + JS + gömülü yedek havuz)
+├── kelimeler.json    # Asıl kelime havuzu (3000+ kelime, üretilmiş)
+├── tools/
+│   └── generate.py   # Havuzu üreten script (TDK dump + sıklık listesi)
 └── README.md
 ```
+
+## 🔄 Kelime Havuzunu Yenileme / Genişletme
+
+`kelimeler.json`, [TDK Güncel Türkçe Sözlük dump'ı](https://github.com/ogun/guncel-turkce-sozluk) ve
+[Türkçe sıklık listesi](https://github.com/hermitdave/FrequencyWords) işlenerek üretilir. Yeniden
+oluşturmak veya eşikleri (zorluk dağılımı, havuz boyutu) değiştirmek için:
+
+```bash
+python tools/generate.py
+```
+
+Script; kaynakları indirir, tek kelime + 4–10 harf + özel ad olmayan maddeleri filtreler,
+sıklık listesiyle eşleştirip **kolay/orta/zor** etiketler, tanımı temizleyip cevabı maskeler
+ve `kelimeler.json` dosyasını yazar. Eşikler dosyanın başındaki sabitlerden ayarlanabilir
+(`EASY_MAX`, `MED_MAX`, `CAP_PER_BUCKET`).
 
 ---
 
