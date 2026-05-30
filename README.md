@@ -61,7 +61,7 @@ Statik tek dosya olduğu için yayınlamak çok kolay ve ücretsizdir.
 
 1. Bu repoda **Settings → Pages** sayfasına git.
 2. **Source** olarak `Deploy from a branch` seç.
-3. **Branch:** `main`, klasör: `/ (root)` → **Save**.
+3. **Branch:** `master`, klasör: `/ (root)` → **Save**.
 4. Birkaç dakika içinde oyun şu adreste yayında olur:
    `https://berkgok.github.io/kelime-oyunu/`
 
