@@ -34,6 +34,12 @@ MIN_DEF_LEN = 12
 
 TR_LOWER = set("abcçdefgğhıijklmnoöprsştuüvyzâîû")
 
+# TDK'nın kaba/hakaret işaretleri (anlamın ozelliklerListe.kisa_adi)
+VULGAR_MARKS = {"kaba", "hkr."}
+# işaretsiz ama uygunsuz kelimeler için yedek kara liste
+BLOCKLIST = {"piç", "gavat", "kaltak", "yosma", "ibne", "kahpe", "orospu",
+             "pezevenk", "taşak", "yarak", "sik", "am", "göt", "bok"}
+
 def fetch(url, path):
     if os.path.exists(path):
         return open(path, "rb").read()
@@ -74,8 +80,9 @@ def clean_def(anlam, word):
     t = re.sub(r"\s+", " ", anlam).strip()
     # asıl tanımı al: ilk ";" öncesi (sonrası genelde eş anlamlı listesi)
     t = t.split(";")[0].strip()
-    # cevabı maskele — yalnızca tam kelime eşleşmesi (kelime sınırlı)
-    t = re.sub(r"\b" + re.escape(word) + r"\b", "…", t, flags=re.IGNORECASE)
+    # cevabı maskele — kelime ve onunla başlayan çekimli/bileşik biçimler
+    # (ör. "cuma" -> "cumartesi", "yazı" -> "yazılması", "maya" -> "mayalanma")
+    t = re.sub(r"\b" + re.escape(word) + r"\w*", "…", t, flags=re.IGNORECASE)
     # çok uzunsa kısalt (son boşluktan kes)
     if len(t) > 150:
         t = t[:150].rsplit(" ", 1)[0] + "…"
@@ -99,13 +106,19 @@ for raw in f:
         continue
     if e.get("cogul_mu") in ("1", 1):              # çoğul başmadde ele
         continue
+    if w in BLOCKLIST:                             # uygunsuz (yedek kara liste)
+        continue
     rank = freq.get(deaccent(w))
     if rank is None or rank >= MAX_RANK:           # sıklık listesinde yok ya da çok nadir -> ele
         continue
     anlamlar = e.get("anlamlarListe") or []
     if not anlamlar:
         continue
-    anlam = (anlamlar[0].get("anlam") or "").strip()
+    a0 = anlamlar[0]
+    marks = {o.get("kisa_adi") for o in (a0.get("ozelliklerListe") or [])}
+    if marks & VULGAR_MARKS:                        # kaba/hakaret içerikli -> ele
+        continue
+    anlam = (a0.get("anlam") or "").strip()
     if len(anlam) < MIN_DEF_LEN or is_ref(anlam):
         continue
     c = clean_def(anlam, w)
