@@ -147,7 +147,7 @@
   .rmain{flex:1 1 auto; min-width:0}
   .rhead{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
   .rans{font-size:17px; color:var(--accent); letter-spacing:1px}
-  .rpts{font-size:13px; font-weight:800; margin-left:auto}
+  .rpts{flex:0 0 auto; font-size:14px; font-weight:800; text-align:right; min-width:48px}
   .rpts.pos{color:var(--green)} .rpts.neg{color:var(--red)} .rpts.zero{color:#94a3b8}
   .rclue{font-size:12.5px; color:#cdc2ec; line-height:1.4; margin-top:3px}
   .rtag{font-size:10px; text-transform:uppercase; letter-spacing:.5px; padding:1px 7px; border-radius:999px;
@@ -721,9 +721,10 @@ const Game = (()=>{
       const tags = (h.t?'<span class="rtag">'+esc(h.t)+'</span>':'') + (h.m?'<span class="rtag mec">mecaz</span>':'');
       return '<div class="rrow '+(ok?'good':'bad')+'">'
         + '<div class="rmain">'
-        +   '<div class="rhead"><b class="rans">'+esc(h.w)+'</b>'+tags+'<span class="rpts '+ptsCls+'">'+sign+'</span></div>'
+        +   '<div class="rhead"><b class="rans">'+esc(h.w)+'</b>'+tags+'</div>'
         +   '<div class="rclue">'+esc(h.c)+'</div>'
         + '</div>'
+        + '<span class="rpts '+ptsCls+'">'+sign+'</span>'
         + '<a class="rtdk" href="'+url+'" target="_blank" rel="noopener" title="TDK\'de aç">TDK ↗</a>'
         + '</div>';
     }).join('');
