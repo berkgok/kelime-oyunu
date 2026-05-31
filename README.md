@@ -33,6 +33,7 @@ Soruların yaklaşık **%60'ı kolay, %30'u orta, %10'u zordur** (zorluk, kelime
 - 📱 **Tam mobil uyumlu** — telefon, tablet ve masaüstünde akışkan, taşmasız tasarım.
 - 🏆 **Rekor kaydı** — en yüksek skorun tarayıcıya (`localStorage`) kaydedilir.
 - 📚 **6200+ kelimelik havuz** — TDK Güncel Türkçe Sözlük dump'ı, Türkçe sıklık listesiyle harmanlanarak üretilir; kalite kontrolünden (cevap/kök sızıntısı, kaba kelime, muğlak tanım elemesi) geçer; havuz `kelimeler.json` dosyasından yüklenir (yüklenemezse gömülü yedek havuza düşer).
+- 🧩 **İpuçları** — her soruda kelimenin **zorluğu** (kolay/orta/zor), **türü** (isim/sıfat/zarf/edat/fiil) ve tanım **mecazi** ise "mecazi anlam" rozeti gösterilir.
 - ⌨️ **Klavye desteği** — `H` ile harf al, `Boşluk` ile cevapla, `Enter` ile gönder.
 
 ---

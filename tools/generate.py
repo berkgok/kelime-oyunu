@@ -123,19 +123,39 @@ def good_meaning(anlam, word):
         return None
     return c
 
+POS_MAP = {"a.": "isim", "sf.": "sıfat", "zf.": "zarf", "e.": "edat",
+           "ünl.": "ünlem", "bağ.": "bağlaç", "zm.": "zamir"}
+
+def pos_of(a):
+    for o in (a.get("ozelliklerListe") or []):
+        k = o.get("kisa_adi")
+        if k in POS_MAP:
+            return POS_MAP[k]
+    return None
+
+def is_mecaz(a):
+    return any(o.get("kisa_adi") == "mec." for o in (a.get("ozelliklerListe") or []))
+
 def choose_def(anlamlar, word):
-    """Birincil (ilk geçerli) anlamı seç — TDK'da anlamlar önem sırasındadır.
-       Birincil anlam kaba/hakaret ise kelimeyi tamamen ele (None)."""
+    """Geçerli anlamlar arasından seç. Mümkünse mecaz OLMAYAN anlamı tercih et
+       (mecaz anlamlar oyuncuyu yanıltabiliyor). Birincil anlam kaba ise kelimeyi ele.
+       Döndürür: (anlam_objesi, temiz_tanım) ya da (None, None)."""
+    valid = []   # (a, c, mecaz)
     for i, a in enumerate(anlamlar):
         marks = {o.get("kisa_adi") for o in (a.get("ozelliklerListe") or [])}
         if marks & VULGAR_MARKS:
             if i == 0:
-                return None                          # birincil anlam kaba -> kelimeyi atla
+                return (None, None)                  # birincil anlam kaba -> kelimeyi atla
             continue
         c = good_meaning((a.get("anlam") or "").strip(), word)
         if c:
-            return c                                 # ilk geçerli anlam (en yaygın sense)
-    return None
+            valid.append((a, c, "mec." in marks))
+    if not valid:
+        return (None, None)
+    for a, c, mec in valid:                          # önce mecaz olmayan ilk geçerli anlam
+        if not mec:
+            return (a, c)
+    return (valid[0][0], valid[0][1])                # hepsi mecazsa ilkini ver
 
 # Aynı başmaddenin birden çok kaydı (homonim) olabilir; en zengin olanı tut.
 seen = {}
@@ -164,14 +184,17 @@ for raw in f:
     anlamlar = e.get("anlamlarListe") or []
     if not anlamlar:
         continue
-    c = choose_def(anlamlar, w)
+    a, c = choose_def(anlamlar, w)
     if not c or len(c) < MIN_GOOD:                 # muğlak/çok kısa tanımı ele
         continue
     d = "k" if rank < EASY_MAX else ("o" if rank < MED_MAX else "z")
+    pos = pos_of(a) or pos_of(anlamlar[0]) or ("fiil" if w.endswith(("mak", "mek")) else "")
+    mecaz = is_mecaz(a)
     score = (int(e.get("anlam_say") or 0), len(c))  # en çok anlamlı (asıl homonim), sonra en açıklayıcı
     prev = seen.get(w)
     if prev is None or score > prev["_score"]:
-        seen[w] = {"w": tr_upper(w), "c": c, "d": d, "_r": rank, "_L": len(w), "_score": score}
+        seen[w] = {"w": tr_upper(w), "c": c, "d": d, "t": pos, "m": 1 if mecaz else 0,
+                   "_r": rank, "_L": len(w), "_score": score}
 
 # ---------------------------------------------------------------- kovalar + cap
 buckets = {}   # (L,d) -> list
@@ -182,7 +205,12 @@ out = []
 for (L, d), lst in buckets.items():
     lst.sort(key=lambda x: x["_r"])          # en yaygın önce
     for o in lst[:CAP_PER_BUCKET]:
-        out.append({"w": o["w"], "c": o["c"], "d": o["d"]})
+        rec = {"w": o["w"], "c": o["c"], "d": o["d"]}
+        if o.get("t"):
+            rec["t"] = o["t"]            # tür: isim/sıfat/zarf/edat/fiil...
+        if o.get("m"):
+            rec["m"] = 1                 # mecazi anlam
+        out.append(rec)
 
 out.sort(key=lambda x: (len(x["w"]), x["d"], x["w"]))
 json.dump(out, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))

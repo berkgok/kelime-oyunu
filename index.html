@@ -81,6 +81,11 @@
   .clue{font-size:clamp(16px,2.4vw,22px); text-align:center; line-height:1.5; color:#fff;
     min-height:64px; display:flex; align-items:center; justify-content:center; padding:6px 10px}
   .clue .len{color:var(--blue2); font-weight:800}
+  .cluetags{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:-2px 0 6px; min-height:22px}
+  .ctag{font-size:12px; letter-spacing:.5px; text-transform:uppercase; padding:3px 10px; border-radius:999px;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); color:#cdbdf5}
+  .ctag.mecaz{background:linear-gradient(180deg,rgba(255,123,0,.25),rgba(255,123,0,.12));
+    border-color:rgba(255,170,80,.5); color:#ffd9a8; font-weight:700}
   .meta{display:flex; justify-content:center; gap:14px; margin:14px 0 18px; flex-wrap:wrap}
   .meta .chip{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
     padding:6px 16px; border-radius:999px; font-size:14px}
@@ -177,7 +182,9 @@
     </div>
     <div class="panel">
       <div class="clue" id="clue">…</div>
+      <div class="cluetags" id="cluetags"></div>
       <div class="meta">
+        <div class="chip">Zorluk <b id="diffVal">–</b></div>
         <div class="chip">Uzunluk <b id="lenVal">–</b></div>
         <div class="chip">Değer <b id="valVal">–</b></div>
         <div class="chip">Açılan <b id="openVal">0</b></div>
@@ -488,7 +495,8 @@ const Game = (()=>{
   function nextWord(){
     if(qi>=queue.length){ endGame(); return; }
     const pick = queue[qi]; qi++;
-    cur = { word:pick.w, clue:pick.c, len:pick.w.length, diff:(pick.d||'k'), revealed:new Set() };
+    cur = { word:pick.w, clue:pick.c, len:pick.w.length, diff:(pick.d||'k'),
+            tur:(pick.t||''), mecaz:!!pick.m, revealed:new Set() };
     count = qi;
     renderWord();
   }
@@ -497,6 +505,15 @@ const Game = (()=>{
 
   function renderWord(){
     $('clue').textContent = cur.clue;
+    // tür + mecaz ipuçları (açıklamanın altında)
+    const tags=[];
+    if(cur.tur)   tags.push('<span class="ctag">'+cur.tur+'</span>');
+    if(cur.mecaz) tags.push('<span class="ctag mecaz">mecazi anlam</span>');
+    $('cluetags').innerHTML = tags.join('');
+    // zorluk
+    const dEl=$('diffVal');
+    dEl.textContent = DIFF_LABEL[cur.diff];
+    dEl.style.color = DIFF_COLOR[cur.diff];
     $('lenVal').textContent = cur.len;
     $('openVal').textContent = 0;
     $('valVal').textContent = value();
