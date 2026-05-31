@@ -127,7 +127,9 @@
 
   #flash{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60; pointer-events:none}
   #flash .msg{font-size:clamp(40px,12vw,110px); font-weight:900; letter-spacing:2px;
-    text-shadow:0 0 50px currentColor; animation:flashIn .9s ease forwards}
+    text-shadow:0 0 50px currentColor; animation:flashIn .9s ease forwards;
+    padding:8px 30px; border-radius:22px; background:rgba(8,3,24,.5);
+    box-shadow:0 10px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08); backdrop-filter:blur(2px)}
   @keyframes flashIn{0%{transform:scale(.3);opacity:0}20%{transform:scale(1.1);opacity:1}80%{opacity:1}100%{transform:scale(1);opacity:0}}
 
   .final{text-align:center}
@@ -136,6 +138,24 @@
   .final .stat .box{background:var(--panel); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:14px 22px}
   .final .stat .box .n{font-size:28px; font-weight:900}
   .final .stat .box .l{font-size:12px; color:#b9a8ee; letter-spacing:1px}
+  .report-title{margin:22px 0 10px; font-size:13px; letter-spacing:2px; color:#cdbdf5; text-transform:uppercase; text-align:center}
+  .report{text-align:left; max-height:42vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:2px}
+  .rrow{display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px;
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-left:4px solid #94a3b8}
+  .rrow.good{border-left-color:var(--green)}
+  .rrow.bad{border-left-color:var(--red)}
+  .rmain{flex:1 1 auto; min-width:0}
+  .rhead{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+  .rans{font-size:17px; color:var(--accent); letter-spacing:1px}
+  .rpts{font-size:13px; font-weight:800; margin-left:auto}
+  .rpts.pos{color:var(--green)} .rpts.neg{color:var(--red)} .rpts.zero{color:#94a3b8}
+  .rclue{font-size:12.5px; color:#cdc2ec; line-height:1.4; margin-top:3px}
+  .rtag{font-size:10px; text-transform:uppercase; letter-spacing:.5px; padding:1px 7px; border-radius:999px;
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.14); color:#bcaee6}
+  .rtag.mec{background:rgba(255,123,0,.18); border-color:rgba(255,170,80,.5); color:#ffd9a8}
+  .rtdk{flex:0 0 auto; font-size:12px; font-weight:800; text-decoration:none; color:#04222b;
+    background:linear-gradient(180deg,#22d3ee,#0891b2); padding:8px 11px; border-radius:10px; white-space:nowrap}
+  .rtdk:hover{filter:brightness(1.08)}
 
   .topbtns{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px}
   .iconbtn{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; font-size:14px}
@@ -225,6 +245,8 @@
         <div class="box"><div class="n" id="finalMiss">0</div><div class="l">KAÇAN KELİME</div></div>
         <div class="box"><div class="n" id="finalBest">0</div><div class="l">REKOR</div></div>
       </div>
+      <h3 class="report-title">Sorular &amp; Cevaplar</h3>
+      <div class="report" id="report"></div>
       <button class="btn btn-main" onclick="Game.start()">TEKRAR OYNA</button>
     </div>
   </section>
@@ -448,6 +470,7 @@ const Game = (()=>{
   let remaining=TOTAL, clockTimer=null, clockEnd=0;
   let answering=false, ansTimer=null, ansEnd=0;
   let cur=null, queue=[], qi=0, spinning=false, resolving=false, muted=false, gameOver=false;
+  let history=[];   // {w, c, t, m, pts, ok} — oyun sonu raporu için
   let audioCtx=null;
 
   const $ = id=>document.getElementById(id);
@@ -587,9 +610,10 @@ const Game = (()=>{
     $('btnLetter').disabled=true;
     missed++;
     flash('0', '#94a3b8'); sWrong();
+    history.push({w:cur.word, c:cur.clue, t:cur.tur, m:cur.mecaz, pts:0, ok:false});
     $('wordReveal').textContent = 'Tüm harfler açıldı · Cevap: ' + cur.word;
     pauseClock();
-    setTimeout(()=>{ if(!gameOver){ resolving=false; resumeClock(); nextWord(); } }, 1000);
+    setTimeout(()=>{ if(!gameOver){ resolving=false; resumeClock(); nextWord(); } }, 2600);
   }
 
   /* ---- süre ---- */
@@ -658,10 +682,12 @@ const Game = (()=>{
       flash(val>0 ? '−'+val : '0', val>0 ? '#ef4444' : '#94a3b8'); sWrong();
     }
     $('scoreVal').textContent = score;
-    // cevabı tüm harfleriyle göster, 1 sn bekle, sonra sıradaki soru
+    history.push({w:cur.word, c:cur.clue, t:cur.tur, m:cur.mecaz, pts:(correct?val:-val), ok:correct});
+    // cevabı tüm harfleriyle göster; doğruda kısa, bilemeyince daha uzun beklet
     revealAll();
     $('wordReveal').textContent = (correct ? 'Doğru! ' : 'Cevap: ') + cur.word + (timeout && !correct ? '  (süre doldu)' : '');
-    setTimeout(()=>{ if(!gameOver){ resolving=false; resumeClock(); nextWord(); } }, 1000);
+    const delay = correct ? 1100 : 2600;
+    setTimeout(()=>{ if(!gameOver){ resolving=false; resumeClock(); nextWord(); } }, delay);
   }
 
   function flash(msg,color){
@@ -675,13 +701,32 @@ const Game = (()=>{
   /* ---- akış ---- */
   function start(){
     score=0; solved=0; missed=0; count=0; remaining=TOTAL; gameOver=false; answering=false; spinning=false; resolving=false;
-    queue=buildQueue(); qi=0;
+    queue=buildQueue(); qi=0; history=[];
     $('scoreVal').textContent=0;
     $('answerForm').hidden=true; $('controls').hidden=false;
     show('gameScreen');
     nextWord();
     startClock();
     try{ audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+  }
+  function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function renderReport(){
+    const el=$('report');
+    if(!history.length){ el.innerHTML=''; return; }
+    el.innerHTML = history.map((h,i)=>{
+      const ok=h.ok;
+      const sign = h.pts>0 ? '+'+h.pts : (h.pts<0 ? '−'+Math.abs(h.pts) : '0');
+      const ptsCls = h.pts>0?'pos':(h.pts<0?'neg':'zero');
+      const url = 'https://sozluk.gov.tr/?ara=' + encodeURIComponent(h.w.toLocaleLowerCase('tr-TR'));
+      const tags = (h.t?'<span class="rtag">'+esc(h.t)+'</span>':'') + (h.m?'<span class="rtag mec">mecaz</span>':'');
+      return '<div class="rrow '+(ok?'good':'bad')+'">'
+        + '<div class="rmain">'
+        +   '<div class="rhead"><b class="rans">'+esc(h.w)+'</b>'+tags+'<span class="rpts '+ptsCls+'">'+sign+'</span></div>'
+        +   '<div class="rclue">'+esc(h.c)+'</div>'
+        + '</div>'
+        + '<a class="rtdk" href="'+url+'" target="_blank" rel="noopener" title="TDK\'de aç">TDK ↗</a>'
+        + '</div>';
+    }).join('');
   }
   function endGame(){
     if(gameOver) return;          // tek seferlik — bitiş sesi asla loop'a girmesin
@@ -695,6 +740,7 @@ const Game = (()=>{
     $('finalSolved').textContent=solved;
     $('finalMiss').textContent=missed;
     $('finalBest').textContent=best;
+    renderReport();
     show('endScreen');
     beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.22),260);
   }
