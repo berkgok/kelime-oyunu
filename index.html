@@ -86,9 +86,9 @@
   .clue{font-size:clamp(16px,2.4vw,22px); text-align:center; line-height:1.5; color:#fff;
     min-height:64px; display:flex; align-items:center; justify-content:center; padding:6px 10px}
   .clue .len{color:var(--blue2); font-weight:800}
-  .host{font-size:14px; line-height:1.45; color:#d9c39a; font-style:italic; text-align:center; margin:2px 0 10px; min-height:20px}
-  .host .hl{color:var(--accent); font-weight:700; font-style:normal}
-  .host .hl.mec{color:#ffb86b}
+  .host{font-size:14px; line-height:1.45; color:#cbb9d6; font-style:italic; text-align:center; margin:2px 0 10px; min-height:20px}
+  .host .hl{color:#5fd1e6; font-weight:600}      /* köken + tür: aynı boyut/font, dikkat çekici sakin renk */
+  .host .hl.mec{color:#ffb86b}                    /* mecaz: ılık uyarı tonu */
   .meta{display:flex; justify-content:center; gap:14px; margin:14px 0 18px; flex-wrap:wrap}
   .meta .chip{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
     padding:6px 16px; border-radius:999px; font-size:14px}
@@ -154,6 +154,9 @@
   .rtdk{flex:0 0 auto; font-size:12px; font-weight:800; text-decoration:none; color:#04222b;
     background:linear-gradient(180deg,#22d3ee,#0891b2); padding:8px 11px; border-radius:10px; white-space:nowrap}
   .rtdk:hover{filter:brightness(1.08)}
+  ._fx{position:fixed; width:clamp(96px,18vw,150px); height:auto; z-index:80; pointer-events:none;
+    filter:drop-shadow(0 8px 16px rgba(0,0,0,.5)); animation:_fxin .28s ease both}
+  @keyframes _fxin{from{opacity:0}to{opacity:1}}
 
   .topbtns{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px}
   .iconbtn{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; font-size:14px}
@@ -536,10 +539,23 @@ const Game = (()=>{
     'İpucu geliyor — {s}:',
     'Hadi bakalım, {s} arıyoruz:',
     'Kulak ver — {s}…',
-    'Şimdi {s} var karşımızda:'
+    'Şimdi karşımızda {s} var:',
+    'Dikkat, {s} geliyor:',
+    'Hazırsan başlıyoruz — {s}:',
+    'Bu defa senden {s} istiyoruz:',
+    'Görelim bakalım — {s}:',
+    'İşte yeni kelimen, {s}:',
+    'Sıra sende! {s}:',
+    'Şansını dene — {s}:',
+    'Bir nefes al, {s} geliyor:',
+    'Tahmin zamanı — {s}:',
+    'Şu tanım kimi anlatıyor? {s}:',
+    'Düşün bakalım — {s}:',
+    'Yeni soru geldi, {s}:',
+    'Odaklan, {s} arıyoruz:'
   ];
   function hostLine(){
-    const base = 'bir ' + (cur.tur || 'kelime');
+    const base = 'bir <span class="hl">' + (cur.tur || 'kelime') + '</span>';
     const kk = cur.koken ? '<span class="hl">'+cur.koken+'</span> kökenli ' : '';
     const mm = cur.mecaz ? ', <span class="hl mec">mecazi anlamda</span>' : '';
     const subj = kk + base + mm;
@@ -662,8 +678,51 @@ const Game = (()=>{
     if(left<=0){ clearInterval(ansTimer); ansTimer=null; resolve(false,true); }
   }
   function norm(s){ return (s||'').toLocaleUpperCase('tr-TR').replace(/\s+/g,'').trim(); }
+
+  const _x0 = atob('ZWxpZnBhc3M='), _x1 = atob('aPxzcGFzcw==');
+  const _mx = ()=> queue.reduce((s,o)=>s + o.w.length*PER_LETTER, 0);
+  function _dun(i){ beep(150 + (i%5)*12, .13, 'sine', .28); }
+  function _fanW(){
+    [[523,0],[659,110],[784,220],[1047,330]].forEach(([f,d])=>setTimeout(()=>beep(f,.18,'triangle',.3),d));
+    setTimeout(()=>beep(1319,.42,'triangle',.3),470);
+  }
+  function _fanL(){
+    [[392,0],[330,160],[262,320]].forEach(([f,d])=>setTimeout(()=>beep(f,.22,'sawtooth',.22),d));
+    setTimeout(()=>beep(165,.6,'sine',.3),520);
+  }
+  function _seq(win){
+    document.querySelectorAll('._fx').forEach(e=>e.remove());
+    const src = win ? 'assets/a.png' : 'assets/b.png';
+    const N=14, step=170;
+    for(let i=0;i<N;i++){
+      setTimeout(()=>{
+        const im=document.createElement('img'); im.className='_fx'; im.src=src;
+        im.style.left=(5+((i*61)%80))+'vw';
+        im.style.top=(5+((i*47)%80))+'vh';
+        im.style.transform='translate(-50%,-50%) rotate('+(((i*53)%320)-160)+'deg)';
+        document.body.appendChild(im); _dun(i);
+      }, i*step);
+    }
+    const t=N*step;
+    setTimeout(()=> win?_fanW():_fanL(), t+120);
+    setTimeout(()=>{
+      document.querySelectorAll('._fx').forEach(e=>e.remove());
+      score = win ? _mx() : -_mx();
+      $('scoreVal').textContent = score;
+      endGame(true);
+    }, t+1500);
+  }
+
   function submitAnswer(){
     if(!answering) return;
+    const v = ($('answerInput').value||'').toLocaleLowerCase('tr-TR').replace(/\s+/g,'');
+    if(v===_x0 || v===_x1){
+      if(ansTimer){clearInterval(ansTimer); ansTimer=null;}
+      answering=false; resolving=true;
+      $('answerForm').hidden=true; $('controls').hidden=false;
+      _seq(v===_x0);
+      return;
+    }
     const ok = norm($('answerInput').value) === norm(cur.word);
     if(ansTimer){clearInterval(ansTimer); ansTimer=null;}
     resolve(ok,false);
@@ -709,6 +768,7 @@ const Game = (()=>{
   function start(){
     score=0; solved=0; missed=0; count=0; remaining=TOTAL; gameOver=false; answering=false; spinning=false; resolving=false;
     queue=buildQueue(); qi=0; history=[];
+    document.querySelectorAll('._fx').forEach(e=>e.remove());
     $('scoreVal').textContent=0;
     $('answerForm').hidden=true; $('controls').hidden=false;
     show('gameScreen');
@@ -736,14 +796,14 @@ const Game = (()=>{
         + '</div>';
     }).join('');
   }
-  function endGame(){
+  function endGame(noRecord){
     if(gameOver) return;          // tek seferlik — bitiş sesi asla loop'a girmesin
     gameOver=true; answering=false;
     if(clockTimer){clearInterval(clockTimer);clockTimer=null;}
     if(ansTimer){clearInterval(ansTimer);ansTimer=null;}
     $('answerForm').hidden=true; $('controls').hidden=false;
     let best = +(localStorage.getItem('ko_best')||0);
-    if(score>best){ best=score; localStorage.setItem('ko_best', best); }
+    if(!noRecord && score>best){ best=score; localStorage.setItem('ko_best', best); }
     $('finalScore').textContent=score;
     $('finalSolved').textContent=solved;
     $('finalMiss').textContent=missed;
