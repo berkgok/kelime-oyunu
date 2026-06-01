@@ -30,7 +30,7 @@
       linear-gradient(160deg,var(--bg1),var(--bg2) 45%,var(--bg3));
     background-attachment:fixed;
     min-height:100vh; overflow-x:hidden;
-    display:flex; align-items:center; justify-content:center;
+    display:flex; flex-direction:column;
     padding:18px;
   }
   body::before{
@@ -40,7 +40,7 @@
       conic-gradient(from 160deg at 80% -10%, transparent 0deg, rgba(59,130,246,.25) 10deg, transparent 25deg);
     mix-blend-mode:screen;
   }
-  .stage{width:100%; max-width:920px; position:relative; z-index:1}
+  .stage{width:100%; max-width:920px; margin:auto; position:relative; z-index:1}
 
   .screen{display:none; animation:fade .4s ease}
   .screen.active{display:block}
@@ -86,11 +86,9 @@
   .clue{font-size:clamp(16px,2.4vw,22px); text-align:center; line-height:1.5; color:#fff;
     min-height:64px; display:flex; align-items:center; justify-content:center; padding:6px 10px}
   .clue .len{color:var(--blue2); font-weight:800}
-  .cluetags{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:-2px 0 6px; min-height:22px}
-  .ctag{font-size:12px; letter-spacing:.5px; text-transform:uppercase; padding:3px 10px; border-radius:999px;
-    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); color:#cdbdf5}
-  .ctag.mecaz{background:linear-gradient(180deg,rgba(255,123,0,.25),rgba(255,123,0,.12));
-    border-color:rgba(255,170,80,.5); color:#ffd9a8; font-weight:700}
+  .host{font-size:14px; line-height:1.45; color:#d9c39a; font-style:italic; text-align:center; margin:2px 0 10px; min-height:20px}
+  .host .hl{color:var(--accent); font-weight:700; font-style:normal}
+  .host .hl.mec{color:#ffb86b}
   .meta{display:flex; justify-content:center; gap:14px; margin:14px 0 18px; flex-wrap:wrap}
   .meta .chip{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
     padding:6px 16px; border-radius:999px; font-size:14px}
@@ -206,8 +204,8 @@
       <div class="box" id="cnt"><div class="label">Kelime</div><div class="val" id="cntVal">1 / 14</div></div>
     </div>
     <div class="panel">
+      <div class="host" id="host"></div>
       <div class="clue" id="clue">…</div>
-      <div class="cluetags" id="cluetags"></div>
       <div class="meta">
         <div class="chip">Uzunluk <b id="lenVal">–</b></div>
         <div class="chip">Değer <b id="valVal">–</b></div>
@@ -523,20 +521,34 @@ const Game = (()=>{
     if(qi>=queue.length){ endGame(); return; }
     const pick = queue[qi]; qi++;
     cur = { word:pick.w, clue:pick.c, len:pick.w.length, diff:(pick.d||'k'),
-            tur:(pick.t||''), mecaz:!!pick.m, revealed:new Set() };
+            tur:(pick.t||''), mecaz:!!pick.m, koken:(pick.k||''), revealed:new Set() };
     count = qi;
     renderWord();
   }
 
   function value(){ return (cur.len - cur.revealed.size) * PER_LETTER; }
 
+  // sunucu ağzı tanıtım cümleleri (köken + tür + mecaz doğal şekilde gömülür)
+  const HOST = [
+    'Bakalım bilebilecek misin — {s}:',
+    'Sıradaki kelimemiz {s}. İpucu şöyle:',
+    'Şuna ne dersin? {s}…',
+    'İpucu geliyor — {s}:',
+    'Hadi bakalım, {s} arıyoruz:',
+    'Kulak ver — {s}…',
+    'Şimdi {s} var karşımızda:'
+  ];
+  function hostLine(){
+    const base = 'bir ' + (cur.tur || 'kelime');
+    const kk = cur.koken ? '<span class="hl">'+cur.koken+'</span> kökenli ' : '';
+    const mm = cur.mecaz ? ', <span class="hl mec">mecazi anlamda</span>' : '';
+    const subj = kk + base + mm;
+    return '🎙️ ' + HOST[(count-1) % HOST.length].replace('{s}', subj);
+  }
+
   function renderWord(){
+    $('host').innerHTML = hostLine();
     $('clue').textContent = cur.clue;
-    // tür + mecaz ipuçları (açıklamanın altında)
-    const tags=[];
-    if(cur.tur)   tags.push('<span class="ctag">'+cur.tur+'</span>');
-    if(cur.mecaz) tags.push('<span class="ctag mecaz">mecazi anlam</span>');
-    $('cluetags').innerHTML = tags.join('');
     $('lenVal').textContent = cur.len;
     $('openVal').textContent = 0;
     $('valVal').textContent = value();
@@ -605,7 +617,7 @@ const Game = (()=>{
     $('btnLetter').disabled=true;
     missed++;
     flash('0', '#94a3b8'); sWrong();
-    history.push({w:cur.word, c:cur.clue, t:cur.tur, m:cur.mecaz, pts:0, ok:false});
+    history.push({w:cur.word, c:cur.clue, t:cur.tur, m:cur.mecaz, k:cur.koken, pts:0, ok:false});
     $('wordReveal').textContent = 'Tüm harfler açıldı · Cevap: ' + cur.word;
     pauseClock();
     setTimeout(()=>{ if(!gameOver){ resolving=false; resumeClock(); nextWord(); } }, 2600);
@@ -677,7 +689,7 @@ const Game = (()=>{
       flash(val>0 ? '−'+val : '0', val>0 ? '#ef4444' : '#94a3b8'); sWrong();
     }
     $('scoreVal').textContent = score;
-    history.push({w:cur.word, c:cur.clue, t:cur.tur, m:cur.mecaz, pts:(correct?val:-val), ok:correct});
+    history.push({w:cur.word, c:cur.clue, t:cur.tur, m:cur.mecaz, k:cur.koken, pts:(correct?val:-val), ok:correct});
     // cevabı tüm harfleriyle göster; doğruda kısa, bilemeyince daha uzun beklet
     revealAll();
     $('wordReveal').textContent = (correct ? 'Doğru! ' : 'Cevap: ') + cur.word + (timeout && !correct ? '  (süre doldu)' : '');
@@ -713,7 +725,7 @@ const Game = (()=>{
       const sign = h.pts>0 ? '+'+h.pts : (h.pts<0 ? '−'+Math.abs(h.pts) : '0');
       const ptsCls = h.pts>0?'pos':(h.pts<0?'neg':'zero');
       const url = 'https://sozluk.gov.tr/?ara=' + encodeURIComponent(h.w.toLocaleLowerCase('tr-TR'));
-      const tags = (h.t?'<span class="rtag">'+esc(h.t)+'</span>':'') + (h.m?'<span class="rtag mec">mecaz</span>':'');
+      const tags = (h.k?'<span class="rtag">'+esc(h.k)+'</span>':'') + (h.t?'<span class="rtag">'+esc(h.t)+'</span>':'') + (h.m?'<span class="rtag mec">mecaz</span>':'');
       return '<div class="rrow '+(ok?'good':'bad')+'">'
         + '<div class="rmain">'
         +   '<div class="rhead"><b class="rans">'+esc(h.w)+'</b>'+tags+'</div>'

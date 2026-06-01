@@ -41,6 +41,12 @@ VULGAR_MARKS = {"kaba", "hkr."}
 BLOCKLIST = {"piç", "gavat", "kaltak", "yosma", "ibne", "kahpe", "orospu",
              "pezevenk", "taşak", "yarak", "sik", "am", "göt", "bok"}
 
+# köken (lisan) — yalnızca yabancı diller; "Türkçe" ve eponim/parantezliler hariç
+LANGS = {"Arapça", "Fransızca", "Farsça", "İngilizce", "İtalyanca", "Rumca", "Almanca",
+         "Latince", "Yunanca", "Rusça", "İspanyolca", "Ermenice", "Bulgarca", "Moğolca",
+         "Macarca", "Japonca", "Sırpça", "İbranice", "Soğdca", "Sanskrit", "Çince",
+         "Portekizce", "Norveççe", "Fince", "Slavca", "Korece", "Lehçe", "Hintçe"}
+
 def fetch(url, path):
     if os.path.exists(path):
         return open(path, "rb").read()
@@ -190,11 +196,13 @@ for raw in f:
     d = "k" if rank < EASY_MAX else ("o" if rank < MED_MAX else "z")
     pos = pos_of(a) or pos_of(anlamlar[0]) or ("fiil" if w.endswith(("mak", "mek")) else "")
     mecaz = is_mecaz(a)
+    lis = (e.get("lisan") or "").split(" ")[0]
+    koken = lis if lis in LANGS else ""           # yabancı köken (Arapça, Fransızca...)
     score = (int(e.get("anlam_say") or 0), len(c))  # en çok anlamlı (asıl homonim), sonra en açıklayıcı
     prev = seen.get(w)
     if prev is None or score > prev["_score"]:
         seen[w] = {"w": tr_upper(w), "c": c, "d": d, "t": pos, "m": 1 if mecaz else 0,
-                   "_r": rank, "_L": len(w), "_score": score}
+                   "k": koken, "_r": rank, "_L": len(w), "_score": score}
 
 # ---------------------------------------------------------------- kovalar + cap
 buckets = {}   # (L,d) -> list
@@ -210,6 +218,8 @@ for (L, d), lst in buckets.items():
             rec["t"] = o["t"]            # tür: isim/sıfat/zarf/edat/fiil...
         if o.get("m"):
             rec["m"] = 1                 # mecazi anlam
+        if o.get("k"):
+            rec["k"] = o["k"]            # köken: Arapça/Fransızca...
         out.append(rec)
 
 out.sort(key=lambda x: (len(x["w"]), x["d"], x["w"]))
