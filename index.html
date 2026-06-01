@@ -154,9 +154,14 @@
   .rtdk{flex:0 0 auto; font-size:12px; font-weight:800; text-decoration:none; color:#04222b;
     background:linear-gradient(180deg,#22d3ee,#0891b2); padding:8px 11px; border-radius:10px; white-space:nowrap}
   .rtdk:hover{filter:brightness(1.08)}
-  ._fx{position:fixed; width:clamp(96px,18vw,150px); height:auto; z-index:80; pointer-events:none;
+  ._fx{position:fixed; width:clamp(88px,17vw,140px); height:auto; z-index:80; pointer-events:none;
     filter:drop-shadow(0 8px 16px rgba(0,0,0,.5)); animation:_fxin .28s ease both}
   @keyframes _fxin{from{opacity:0}to{opacity:1}}
+  ._hero{position:fixed; left:50%; top:50%; width:min(72vw,72vh); max-width:540px; height:auto;
+    z-index:90; pointer-events:none; filter:drop-shadow(0 14px 44px rgba(0,0,0,.6));
+    animation:_heroin .4s cubic-bezier(.2,1.5,.4,1) both}
+  @keyframes _heroin{from{transform:translate(-50%,-50%) scale(.25); opacity:0}
+    to{transform:translate(-50%,-50%) scale(1); opacity:1}}
 
   .topbtns{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px}
   .iconbtn{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; font-size:14px}
@@ -691,26 +696,30 @@ const Game = (()=>{
     setTimeout(()=>beep(165,.6,'sine',.3),520);
   }
   function _seq(win){
-    document.querySelectorAll('._fx').forEach(e=>e.remove());
+    document.querySelectorAll('._fx,._hero').forEach(e=>e.remove());
     const src = win ? 'assets/a.png' : 'assets/b.png';
-    const N=14, step=170;
+    const N=15, step=160, rnd=(a,b)=>a+Math.random()*(b-a);
     for(let i=0;i<N;i++){
       setTimeout(()=>{
         const im=document.createElement('img'); im.className='_fx'; im.src=src;
-        im.style.left=(5+((i*61)%80))+'vw';
-        im.style.top=(5+((i*47)%80))+'vh';
-        im.style.transform='translate(-50%,-50%) rotate('+(((i*53)%320)-160)+'deg)';
+        im.style.left=rnd(3,97)+'vw';
+        im.style.top=rnd(3,93)+'vh';
+        im.style.transform='translate(-50%,-50%) rotate('+rnd(-180,180)+'deg)';
         document.body.appendChild(im); _dun(i);
       }, i*step);
     }
     const t=N*step;
-    setTimeout(()=> win?_fanW():_fanL(), t+120);
-    setTimeout(()=>{
-      document.querySelectorAll('._fx').forEach(e=>e.remove());
+    setTimeout(()=>{                                  // final ses + ortada büyük görsel
+      win?_fanW():_fanL();
+      const hero=document.createElement('img'); hero.className='_hero'; hero.src=src;
+      document.body.appendChild(hero);
+    }, t+140);
+    setTimeout(()=>{                                  // ses bitince rapora geç
+      document.querySelectorAll('._fx,._hero').forEach(e=>e.remove());
       score = win ? _mx() : -_mx();
       $('scoreVal').textContent = score;
       endGame(true);
-    }, t+1500);
+    }, t+2000);
   }
 
   function submitAnswer(){
@@ -768,7 +777,7 @@ const Game = (()=>{
   function start(){
     score=0; solved=0; missed=0; count=0; remaining=TOTAL; gameOver=false; answering=false; spinning=false; resolving=false;
     queue=buildQueue(); qi=0; history=[];
-    document.querySelectorAll('._fx').forEach(e=>e.remove());
+    document.querySelectorAll('._fx,._hero').forEach(e=>e.remove());
     $('scoreVal').textContent=0;
     $('answerForm').hidden=true; $('controls').hidden=false;
     show('gameScreen');
