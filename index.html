@@ -486,23 +486,34 @@ const Game = (()=>{
   const $ = id=>document.getElementById(id);
   const show = id=>{document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active');};
 
-  /* ---- ses ---- */
-  function beep(freq,dur=0.12,type="sine",vol=0.2){
+  /* ---- ses (yumuşak zarflı sentez) ---- */
+  function _ac(){ return audioCtx || (audioCtx = new (window.AudioContext||window.webkitAudioContext)()); }
+  function tone(t0,f,dur,o){
+    o=o||{}; const a=_ac(); const osc=a.createOscillator(), g=a.createGain();
+    osc.type=o.type||'sine'; osc.connect(g); g.connect(a.destination);
+    osc.frequency.setValueAtTime(f,t0);
+    if(o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t0+dur);
+    const vol=o.vol==null?0.2:o.vol, atk=o.atk==null?0.008:o.atk;
+    g.gain.setValueAtTime(0.0001,t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0+atk);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    osc.start(t0); osc.stop(t0+dur+0.03);
+  }
+  function S(tones){              // tones: [{f|[f..], at(ms), d(s), type, vol, to}]
     if(muted) return;
-    try{
-      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
-      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-      o.type=type; o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination);
-      g.gain.setValueAtTime(vol,audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
-      o.start(); o.stop(audioCtx.currentTime+dur);
+    try{ const a=_ac(); if(a.state==='suspended') a.resume();
+      const t0=a.currentTime+0.02;
+      tones.forEach(n=>{ const at=(n.at||0)/1000, dur=n.d==null?0.15:n.d, f=n.f;
+        if(Array.isArray(f)) f.forEach(ff=>tone(t0+at,ff,dur,n)); else tone(t0+at,f,dur,n); });
     }catch(e){}
   }
-  const sCorrect=()=>{beep(660,.1,"triangle");setTimeout(()=>beep(880,.18,"triangle"),90);};
-  const sWrong=()=>{beep(180,.35,"sawtooth",.18);};
-  const sLetter=()=>beep(520,.08,"square",.12);
-  const sTick=()=>beep(440,.05,"square",.08);
-  const sNope=()=>{beep(300,.1,"sine",.13);setTimeout(()=>beep(225,.16,"sine",.13),95);};  // yumuşak "yanlış"
+  const sCorrect=()=>S([{f:523,d:.18,type:'sine',vol:.25},{f:659,at:75,d:.18,type:'sine',vol:.25},{f:784,at:150,d:.24,type:'sine',vol:.25}]);
+  const sWrong  =()=>S([{f:330,d:.16,type:'sine',vol:.18},{f:247,at:120,d:.26,type:'sine',vol:.18}]);
+  const sNope   =()=>S([{f:380,d:.06,type:'sine',vol:.13},{f:300,at:80,d:.1,type:'sine',vol:.13}]);
+  const sLetter =()=>S([{f:520,d:.08,type:'square',vol:.12}]);
+  const sTick   =()=>S([{f:1000,d:.03,type:'sine',vol:.12}]);
+  const sSpin   =()=>S([{f:500,d:.02,type:'square',vol:.03}]);
+  const sEnd    =()=>S([{f:523,d:.14,type:'triangle',vol:.2},{f:659,at:140,d:.14,type:'triangle',vol:.2},{f:784,at:280,d:.14,type:'triangle',vol:.2},{f:1047,at:420,d:.4,type:'triangle',vol:.22}]);
 
   /* ---- 14 soruluk kuyruk: her uzunluktan 2'şer, ağırlıklı zorluk ---- */
   function pickDiff(L){
@@ -601,7 +612,7 @@ const Game = (()=>{
     let i=0; const total=20; let delay=28;
     function step(){
       tile.textContent = ALPHA[Math.floor(Math.random()*ALPHA.length)];
-      beep(300 + i*9, .03, "sine", .05);             // çarkıfelek tıkırtısı (yumuşak)
+      sSpin();                                       // çark tıkırtısı
       i++;
       if(i>=total){
         tile.classList.remove('spin');
@@ -694,15 +705,9 @@ const Game = (()=>{
 
   const _x0 = atob('ZWxpZnBhc3M='), _x1 = atob('aPxzcGFzcw==');
   const _mx = ()=> queue.reduce((s,o)=>s + o.w.length*PER_LETTER, 0);
-  function _dun(i){ beep(150 + (i%5)*12, .13, 'sine', .28); }
-  function _fanW(){
-    [[523,0],[659,110],[784,220],[1047,330]].forEach(([f,d])=>setTimeout(()=>beep(f,.18,'triangle',.3),d));
-    setTimeout(()=>beep(1319,.42,'triangle',.3),470);
-  }
-  function _fanL(){
-    [[392,0],[330,160],[262,320]].forEach(([f,d])=>setTimeout(()=>beep(f,.22,'sawtooth',.22),d));
-    setTimeout(()=>beep(165,.6,'sine',.3),520);
-  }
+  function _dun(i){ S([{f:200,to:500,d:.08,type:'triangle',vol:.22}]); }
+  function _fanW(){ S([{f:[523,659,784],d:.2,type:'triangle',vol:.14},{f:[587,740,880],at:200,d:.5,type:'triangle',vol:.16}]); }
+  function _fanL(){ S([{f:330,to:294,d:.3,type:'sawtooth',vol:.2},{f:294,to:262,at:300,d:.3,type:'sawtooth',vol:.2},{f:247,to:196,at:600,d:.6,type:'sawtooth',vol:.22}]); }
   function _seq(win){
     document.querySelectorAll('._fx,._hero').forEach(e=>e.remove());
     const src = win ? 'assets/a.png' : 'assets/b.png';
@@ -840,7 +845,7 @@ const Game = (()=>{
     $('finalBest').textContent=best;
     renderReport();
     show('endScreen');
-    beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.22),260);
+    sEnd();
   }
   function quit(){ remaining=0; endGame(); }
   function toggleMute(){ muted=!muted; $('muteBtn').textContent = muted?'🔇 Ses':'🔊 Ses'; }
