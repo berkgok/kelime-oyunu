@@ -508,11 +508,11 @@ const Game = (()=>{
     }catch(e){}
   }
   const sCorrect=()=>S([{f:523,d:.18,type:'sine',vol:.25},{f:659,at:75,d:.18,type:'sine',vol:.25},{f:784,at:150,d:.24,type:'sine',vol:.25}]);
-  const sWrong  =()=>S([{f:330,d:.16,type:'sine',vol:.18},{f:247,at:120,d:.26,type:'sine',vol:.18}]);
-  const sNope   =()=>S([{f:380,d:.06,type:'sine',vol:.13},{f:300,at:80,d:.1,type:'sine',vol:.13}]);
-  const sLetter =()=>S([{f:587,d:.1,type:'triangle',vol:.15},{f:880,at:70,d:.18,type:'sine',vol:.13}]);
+  const sWrong  =()=>S([{f:392,d:.16,type:'triangle',vol:.16},{f:311,at:140,d:.28,type:'triangle',vol:.16}]);
+  const sNope   =()=>S([{f:[330,392],d:.18,type:'sine',vol:.1}]);
+  const sLetter =()=>S([{f:523,d:.22,type:'sine',vol:.2,atk:.004}]);
   const sTick   =()=>S([{f:1000,d:.03,type:'sine',vol:.12}]);
-  const sSpin   =()=>S([{f:500,d:.02,type:'square',vol:.03}]);
+  const sSpin   =(i)=>S([{f:440 + (i||0)*10, d:.05, type:'sine', vol:.05}]);   // marimba tık (kare başına hafif yükselen)
   const sEnd    =()=>S([{f:523,d:.14,type:'triangle',vol:.2},{f:659,at:140,d:.14,type:'triangle',vol:.2},{f:784,at:280,d:.14,type:'triangle',vol:.2},{f:1047,at:420,d:.4,type:'triangle',vol:.22}]);
   const sBuzz   =()=>S([{f:392,to:523,d:.12,type:'sine',vol:.14}]);
 
@@ -623,7 +623,7 @@ const Game = (()=>{
         return;
       }
       tile.textContent = ALPHA[Math.floor(Math.random()*ALPHA.length)];
-      sSpin();                                        // dönüş tıkırtısı (oturma karesinde çalmaz)
+      sSpin(i);                                       // dönüş tıkırtısı (oturma karesinde çalmaz)
       if(i > total*0.55) delay += 13;                 // sona doğru yavaşla
       setTimeout(step, delay);
     }
@@ -708,8 +708,8 @@ const Game = (()=>{
   const _x0 = atob('ZWxpZnBhc3M='), _x1 = atob('aPxzcGFzcw==');
   const _mx = ()=> queue.reduce((s,o)=>s + o.w.length*PER_LETTER, 0);
   function _dun(i){ S([{f:200,to:500,d:.08,type:'triangle',vol:.22}]); }
-  function _fanW(){ S([{f:[523,659,784],d:.2,type:'triangle',vol:.14},{f:[587,740,880],at:200,d:.5,type:'triangle',vol:.16}]); }
-  function _fanL(){ S([{f:330,to:294,d:.3,type:'sawtooth',vol:.2},{f:294,to:262,at:300,d:.3,type:'sawtooth',vol:.2},{f:247,to:196,at:600,d:.6,type:'sawtooth',vol:.22}]); }
+  function _fanW(){ S([{f:[392,523],d:.16,type:'triangle',vol:.16},{f:[523,659],at:160,d:.16,type:'triangle',vol:.16},{f:[659,784],at:320,d:.16,type:'triangle',vol:.16},{f:[784,1047],at:480,d:.6,type:'triangle',vol:.18}]); }
+  function _fanL(){ S([{f:392,d:.22,type:'sawtooth',vol:.22},{f:330,at:160,d:.22,type:'sawtooth',vol:.22},{f:262,at:320,d:.22,type:'sawtooth',vol:.22},{f:165,at:520,d:.6,type:'sine',vol:.3}]); }
   function _seq(win){
     document.querySelectorAll('._fx,._hero').forEach(e=>e.remove());
     const src = win ? 'assets/a.png' : 'assets/b.png';
