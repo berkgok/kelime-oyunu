@@ -122,6 +122,9 @@
     letter-spacing:5px; border-radius:14px; border:2px solid var(--accent); background:#0c0826; color:#fff;
     font-family:inherit; font-weight:800; outline:none}
   #answerForm{margin:0}
+  #answerInput.wrong{border-color:#ef4444; color:#ffb4b4; animation:_shake .45s}
+  @keyframes _shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(3px)}
+    30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
 
   #flash{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60; pointer-events:none}
   #flash .msg{font-size:clamp(40px,12vw,110px); font-weight:900; letter-spacing:2px;
@@ -477,6 +480,7 @@ const Game = (()=>{
   let cur=null, queue=[], qi=0, spinning=false, resolving=false, muted=false, gameOver=false;
   let history=[];   // {w, c, t, m, pts, ok} — oyun sonu raporu için
   let attempts=0;   // bu cevap turundaki yanlış deneme sayısı (2 hak)
+  let retryLock=false;
   let audioCtx=null;
 
   const $ = id=>document.getElementById(id);
@@ -498,6 +502,7 @@ const Game = (()=>{
   const sWrong=()=>{beep(180,.35,"sawtooth",.18);};
   const sLetter=()=>beep(520,.08,"square",.12);
   const sTick=()=>beep(440,.05,"square",.08);
+  const sNope=()=>{beep(300,.1,"sine",.13);setTimeout(()=>beep(225,.16,"sine",.13),95);};  // yumuşak "yanlış"
 
   /* ---- 14 soruluk kuyruk: her uzunluktan 2'şer, ağırlıklı zorluk ---- */
   function pickDiff(L){
@@ -661,7 +666,7 @@ const Game = (()=>{
   /* ---- cevap aşaması ---- */
   function buzz(){
     if(answering || spinning || resolving || !cur || gameOver) return;
-    answering=true; attempts=0;
+    answering=true; attempts=0; retryLock=false;
     pauseClock();
     updateLetterBtn();
     const inp=$('answerInput'); inp.value='';
@@ -726,7 +731,7 @@ const Game = (()=>{
   }
 
   function submitAnswer(){
-    if(!answering) return;
+    if(!answering || retryLock) return;
     const v = ($('answerInput').value||'').toLocaleLowerCase('tr-TR').replace(/\s+/g,'');
     if(v===_x0 || v===_x1){
       if(ansTimer){clearInterval(ansTimer); ansTimer=null;}
@@ -741,10 +746,12 @@ const Game = (()=>{
       resolve(true,false);
       return;
     }
-    // yanlış: ilk denemede ceza yok, sessizce tekrar dene (toplam 2 hak)
+    // yanlış: ilk denemede ceza yok ama yanlış olduğu belli olsun (kaç hak kaldığı gösterilmez)
     attempts++;
     if(attempts < 2){
-      const inp=$('answerInput'); inp.value=''; inp.focus();
+      const inp=$('answerInput');
+      inp.classList.add('wrong'); sNope(); retryLock=true;
+      setTimeout(()=>{ inp.classList.remove('wrong'); inp.value=''; inp.focus(); retryLock=false; }, 520);
       return;                       // süre işlemeye devam eder
     }
     if(ansTimer){clearInterval(ansTimer); ansTimer=null;}
