@@ -510,11 +510,11 @@ const Game = (()=>{
   const sCorrect=()=>S([{f:523,d:.18,type:'sine',vol:.25},{f:659,at:75,d:.18,type:'sine',vol:.25},{f:784,at:150,d:.24,type:'sine',vol:.25}]);
   const sWrong  =()=>S([{f:392,d:.16,type:'triangle',vol:.16},{f:311,at:140,d:.28,type:'triangle',vol:.16}]);
   const sNope   =()=>S([{f:[330,392],d:.18,type:'sine',vol:.1}]);
-  const sLetter =()=>S([{f:523,d:.22,type:'sine',vol:.2,atk:.004}]);
+  const sLetter =()=>S([{f:523,d:.22,type:'sine',vol:.34,atk:.004}]);
   const sTick   =()=>S([{f:1000,d:.03,type:'sine',vol:.12}]);
-  const sSpin   =(i)=>S([{f:440 + (i||0)*10, d:.05, type:'sine', vol:.05}]);   // marimba tık (kare başına hafif yükselen)
+  const sSpin   =(i)=>S([{f:440 + (i||0)*10, d:.05, type:'sine', vol:.13}]);   // marimba tık (kare başına hafif yükselen)
   const sEnd    =()=>S([{f:523,d:.14,type:'triangle',vol:.2},{f:659,at:140,d:.14,type:'triangle',vol:.2},{f:784,at:280,d:.14,type:'triangle',vol:.2},{f:1047,at:420,d:.4,type:'triangle',vol:.22}]);
-  const sBuzz   =()=>S([{f:392,to:523,d:.12,type:'sine',vol:.14}]);
+  const sBuzz   =()=>S([{f:392,to:523,d:.12,type:'sine',vol:.26}]);
 
   /* ---- 14 soruluk kuyruk: her uzunluktan 2'şer, ağırlıklı zorluk ---- */
   function pickDiff(L){
